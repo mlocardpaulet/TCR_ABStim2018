@@ -1,0 +1,142 @@
+---
+title: "TCR phospho-signalling upon antibody-based stimulation"
+author: "Marie Locard-Paulet"
+date: '`r date()`'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Aim of the analysis
+
+The aim of the analysis is to identify phosphorylation sites that are regulated upon antibody-based TCR activation in primary T-cells. A global analysis of our proteomic/phosphoproteomic data sets should allow us to study phospho-signalling resulting from TCR activation in primary cells.
+
+# Sample preparation and input files
+
+## Cell stimulation
+
+Romain Roncagalli performed cell isolation and stimulation 4 times (R1: 20141204, R3: 20150306, R4: 20150713, R5: 20151103) as follows:
+
+Day 0:
+
+1. Purified CD4+T cells (negative selection dynal, invitrogen cat: 114-15D) are activated in culture with 3 ug/ml of coated (O/N 4C or 4H 37C and wash 3X with PBS1X) anti-CD3 (2C11) + soluble anti-CD28 (1ug/ml). 4 ml/well of 0.625 10^6 cells/ml are distributed in 6 well plates. 
+Use complete RPMI 
+ 
+Day 2:
+
+1. Harvest cells, wash and count 
+2. Resuspend cells at 1 10^6 cells/ml with IL-2 (1/2000), and distribute them: 5ml/well (6 well plates)
+ 
+Day 3:
+
+Add 5 ml of complete medium with IL-2/ well
+ 
+Day 4:
+
+1. Wash cells 2X with 37 C RPMI SF, count  
+2. 50 10^6 of cells are resuspended in 4 ml RPMI SF, pelleted and 10 ug of biotinylated anti-CD3 + 10 ug of biotinylated anti-CD4 were added on pellets. (for ab stimulation). 2X 50 10^6 were prepared for each condition.
+3. Pellets are resuspended in 100 ul of  37C SF RPMI and incubated for 5 min at 37C
+4. 28 ug (100 ul) of purified Streptavidin (SAV) for ab stimulation and incubated for different time points 37C
+5. Stimulation was stopped by freezing tube in liquid nitrogen
+
+
+## Sample preparation for MS analysis
+
+### Peptide samples
+
+After trypsin digestion, 5ug of each peptide sample was injected on the Q-Exactive plus for relative protein quantification.
+
+### phospho-samples 
+
+Carine Froment performed TiO2 enrichments, injected 3 to 4 times 2.5% of them (labelled "TiO2") and performed a phospho-tyrosine IP on the 90% remaining (injected in 3 to 4 technical replicates - corresponds to 22.5% of starting material). Samples were injected onto a Q-Exactive Plus for label-free MS relative quantification. The analysis was performed using Maxquant.
+
+
+## Input files
+
+The input files are all in the folder `RAW/`:
+
+* `PeptideSamples/`: output protein table from the MaxQuant analysis of all peptide samples prior to TiO2 and phospho-tyrosine enrichment.
+* `TiO2/`: output phosphosites tables from the MaxQuant analysis of 10% of the samples after TiO2 and before phospho-tyrosine enrichment. Each biological replicate was searched independently.
+* `pYIP/`: output phosphosites tables from the MaxQuant analysis of the samples after TiO2 and phospho-tyrosine enrichment. Each biological replicate was searched independently.
+
+
+```{r, eval = F}
+files <- list.files("RAW/", pattern = ".txt", recursive = T, full.names = T)
+files <- files[grepl("TiO2", files) | grepl("pYIP", files)]
+lf <- lapply(files, read.delim, stringsAsFactors = F, sep = "\t", header = T)
+names(lf) <- gsub("RAW//", "", files, fixed = T)
+```
+
+--------------------------------------------------------------------------------
+
+# Multisites parsing
+
+MaxQuant returns a table with one row per phosphorylation site. It returns the quantification values for the multiply phosphorylated site but does not map them to the corresponding pairs (or triplets). I use a script to identify the quantification values comming from the multiply phosphorylated peptides and match them.
+
+```{r, eval = F}
+source("RFunctions/MultiPhosphoParsingMQ_20180817.R")
+
+for (i in seq_along(lf)) {
+  tab <- lf[[i]]
+  tab <- MultiPhosphoParsingMQ(tab)
+  sitespos <- sapply(as.character(tab$phosphoSites), function(x) {
+    strsplit(x, "_", fixed = T)[[1]][2]
+  })
+  tab$psiteGeneID <- paste0(tab$`Gene.names`, "_", sitespos)
+  lf[[i]] <- tab
+}
+save(lf, file = "RData/01_ParsedTables.RData")
+```
+
+```{r}
+load(file = "RData/01_ParsedTables.RData")
+```
+
+I create a list with for each phosphorylation site ID its ID with gene name (for figures) and the list of all the mono-phosphorylations it corresponds to.
+
+```{r, eval = F}
+vecID <- vector(mode = "list")
+vecGeneID <- vector(mode = "list")
+lMono <- vector(mode = "list")
+for (i in seq_along(lf)) {
+  vecID[[i]] <- lf[[i]]$phosphoSites
+  vecGeneID[[i]] <- lf[[i]]$psiteGeneID
+  vec <- sapply(as.character(lf[[i]]$phosphoSites), function(x) {
+    strsplit(x, "_", fixed = T)[[1]][2]
+  })
+  vec <- lapply(seq_along(vec), function(x) {
+    paste0(lf[[i]]$Accession[x], "_", strsplit(vec[x], "+", fixed = T)[[1]])
+  })
+  names(vec) <- vecID[[i]]
+  lMono[[i]] <- vec
+}
+uID <- sort(unique(unlist(vecID)))
+mappingID <- unlist(vecID)
+vecGeneID <- unlist(vecGeneID)
+
+psiteInfo <- vector(mode = "list")
+i = 0
+for (el in uID) {
+  i = i + 1
+  vec <- sapply(lMono, function(x) {
+    unique(x[names(x) == el])
+  })
+  vec <- unique(unlist(vec))
+  lel <- list("phosphoSites" = el, "GeneID" = unique(vecGeneID[vecID == el]), "MonoSites" = sort(vec))
+  psiteInfo[[i]] <- lel
+}
+names(psiteInfo) <- uID
+save(psiteInfo, file = "RData/02_psiteInfo.RData")
+```
+
+```{r}
+load(file = "RData/02_psiteInfo.RData")
+```
+
+--------------------------------------------------------------------------------
+
+```{r}
+sessionInfo()
+```
