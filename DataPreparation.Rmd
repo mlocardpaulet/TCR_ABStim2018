@@ -7,6 +7,9 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
+
+library(venneuler)
+library(gplots)
 ```
 
 # Aim of the analysis
@@ -64,7 +67,7 @@ The input files are all in the folder `RAW/`:
 
 ```{r, eval = F}
 files <- list.files("RAW/", pattern = ".txt", recursive = T, full.names = T)
-files <- files[grepl("TiO2", files) | grepl("pYIP", files)]
+files <- files[(grepl("TiO2", files) | grepl("pYIP", files)) & !grepl("peptides", files)]
 lf <- lapply(files, read.delim, stringsAsFactors = F, sep = "\t", header = T)
 names(lf) <- gsub("RAW//", "", files, fixed = T)
 ```
@@ -75,11 +78,15 @@ names(lf) <- gsub("RAW//", "", files, fixed = T)
 
 MaxQuant returns a table with one row per phosphorylation site. It returns the quantification values for the multiply phosphorylated site but does not map them to the corresponding pairs (or triplets). I use a script to identify the quantification values comming from the multiply phosphorylated peptides and match them.
 
+I keep only the sites with a PEP value <= 0.01.
+
 ```{r, eval = F}
 source("RFunctions/MultiPhosphoParsingMQ_20180817.R")
 
 for (i in seq_along(lf)) {
   tab <- lf[[i]]
+  tab <- tab[!grepl("CON_", tab$Protein) & !grepl("REV_", tab$Protein),]
+  tab <- tab[(tab$PEP <= 0.01),]
   tab <- MultiPhosphoParsingMQ(tab)
   sitespos <- sapply(as.character(tab$phosphoSites), function(x) {
     strsplit(x, "_", fixed = T)[[1]][2]
@@ -87,6 +94,9 @@ for (i in seq_along(lf)) {
   tab$psiteGeneID <- paste0(tab$`Gene.names`, "_", sitespos)
   lf[[i]] <- tab
 }
+names(lf) <- sapply(names(lf), function(x) {
+  substr(x, start = nchar("pYIP/Phospho (STY)Sites_ProFI-S4_p"), stop = nchar("pYIP/Phospho (STY)Sites_ProFI-S4_pYIP_R1"))
+})
 save(lf, file = "RData/01_ParsedTables.RData")
 ```
 
@@ -135,6 +145,262 @@ save(psiteInfo, file = "RData/02_psiteInfo.RData")
 load(file = "RData/02_psiteInfo.RData")
 ```
 
+# Data normalisation using iRTs 
+
+In order to correct for technical variation due to the instrument with spided-in synthetic peptides. I use their intensity to normalise the data. I use the run with the highest sum of intensities of all the iRTs as a reference. Then, I calculate a normalisation factor median from all the iRTs.
+
+```{r}
+files <- list.files("RAW/iRTNorm/", pattern = ".txt", recursive = T, full.names = T)
+iRT <- lapply(files, read.delim, stringsAsFactors = F, sep = "\t", header = T)
+names(iRT) <- gsub("RAW/iRTNorm/peptides_", "", files, fixed = T)
+names(iRT) <- gsub(".txt", "", names(iRT), fixed = T)
+rm(files)
+
+for (i in seq_along(iRT)) {
+  tab <- iRT[[i]]
+  tab <- tab[grepl("Biognosys", tab$Proteins),]
+  mat <- tab[,grepl("Intensity.", names(tab), fixed = T)]
+  # boxplot(log2(mat), las = 2, main = names(iRT)[i])
+  cv <- sapply(seq_len(nrow(tab)), function(x) {
+    sd(mat[x,], na.rm = T)/mean(as.numeric(mat[x,]), na.rm = T)
+  })
+  # Keep only the iRTs with a CV < 50%:
+  mat <- mat[cv < 0.5,]
+  # I take as a reference the condition with the maximum sum of intensities of all the iRTs:
+  sums <- colSums(mat)
+  ref <- which(sums == max(sums, na.rm = T))
+  ref <- mat[,ref]
+  for (j in seq_len(ncol(mat))) {
+    mat[,j] <- mat[,j] / ref
+  }
+  # Median of the normalisation factors:
+  med <- sapply(seq_len(ncol(mat)), function(x) {
+    median(as.numeric(mat[,x]), na.rm = T)
+  })
+  names(med) <- colnames(mat)
+  iRT[[i]] <- med
+}
+```
+
+```{r}
+lf <- lf[order(names(lf))]
+iRT <- iRT[order(names(iRT))]
+for (i in seq_along(lf)) {
+  tab <- lf[[i]]
+  mat <- tab[,grepl("Intensity.", names(tab), fixed = T) & grepl("_Parsed", names(tab), fixed = T)]
+  mat[mat == 0] <- NA
+  mat <- apply(mat, 2, as.numeric)
+  norm <- iRT[[i]]
+  for (j in seq_len(ncol(mat))) {
+    mat[,j] <- mat[,j]/norm[names(norm) == gsub("_Parsed", "", colnames(mat)[j])]
+  }
+  colnames(mat) <- gsub("_Parsed", "_iRTNorm", colnames(mat))
+  tab <- cbind(tab, mat)
+  lf[[i]] <- tab
+}
+rm(iRT)
+```
+
+# Data cleaning
+
+For the replicate 1 (R1) of the TiO2, we noticed that the injection 1 were not ran in optimum conditions. There are more than 50% missing values in these runs. We remove them.
+
+I also remove the R1_S120.Inj3bis that has a lower intensity than the others, which would impact the statistical analysis.
+
+```{r, echo = F}
+lf$TiO2_R1 <- lf$TiO2_R1[,!grepl(".Inj1_iRTNorm", names(lf$TiO2_R1))]
+lf$TiO2_R1 <- lf$TiO2_R1[,!grepl("S120.Inj3bis_iRTNorm", names(lf$TiO2_R1))]
+```
+
+--------------------------------------------------------------------------------
+
+# Number of sites
+
+```{r}
+n <- length(unique(names(psiteInfo)))
+vec <- vector(mode = "character")
+for (el in psiteInfo) {
+  vec <- c(vec, el$MonoSites)
+}
+vec <- unique(vec)
+```
+
+There are `r n` unique sites or combination of sites (from multiply phosphorylated peptides) in the whole data set. These correspond to `r length(vec)` individual phosphorylation sites.
+
+```{r}
+par(mar = c(1, 1, 4, 1))
+npprot <- sapply(lf, function(x) length(unique(x$Accession)))
+npsites <- sapply(lf, function(x) length(unique(x$phosphoSite)))
+lvenn <- lapply(lf, function(x) unique(x$phosphoSite))
+# Draw venn diagrams:
+## pYIP:
+l <- lvenn[grepl("pYIP", names(lvenn))]
+vec <-  sapply(l, length)
+intAB <- length(intersect(l[[1]], l[[2]]))
+intBC <- length(intersect(l[[3]], l[[2]]))
+intAC <- length(intersect(l[[3]], l[[1]]))
+intABC <- length(intersect(intersect(l[[3]], l[[2]]), l[[1]]))
+v1 <- venneuler(c(A = as.numeric(vec[1]), B = as.numeric(vec[2]), C = as.numeric(vec[3]), "A&B" = intAB, "B&C" = intBC, "A&C" = intAC, "A&B&C" = intABC))
+
+plot(v1)
+title("pYIP\nRep 1, 4, 5")
+venn(l)
+
+
+
+## TiO2:
+l <- lvenn[grepl("TiO2", names(lvenn))]
+vec <-  sapply(l, length)
+intAB <- length(intersect(l[[1]], l[[2]]))
+intBC <- length(intersect(l[[3]], l[[2]]))
+intAC <- length(intersect(l[[3]], l[[1]]))
+intAD <- length(intersect(l[[4]], l[[1]]))
+intBD <- length(intersect(l[[4]], l[[2]]))
+intCD <- length(intersect(l[[4]], l[[3]]))
+intABC <- length(intersect(intersect(l[[3]], l[[2]]), l[[1]]))
+intABD <- length(intersect(intersect(l[[4]], l[[2]]), l[[1]]))
+intACD <- length(intersect(intersect(l[[3]], l[[4]]), l[[1]]))
+intABCD <- length(intersect(intersect(intersect(l[[3]], l[[4]]), l[[1]]), l[[2]]))
+v2 <- venneuler(c(A = as.numeric(vec[1]), B = as.numeric(vec[2]), C = as.numeric(vec[3]), D = as.numeric(vec[4]), "A&B" = intAB, "B&C" = intBC, "A&C" = intAC, "A&D" = intAD, "D&C" = intCD, "D&B" = intBD, "A&B&C" = intABC, "A&B&D" = intABD, "A&C&D" = intACD, "A&B&C&D" = intABCD))
+
+plot(v2)
+title("TiO2\nRep 1, 3, 4, 5")
+
+venn(l)
+
+pdf("Figures/Venns.pdf", useDingbats=FALSE, 11.69, 8.27)
+plot(v1)
+title("pYIP\nRep 1, 4, 5")
+plot(v2)
+title("TiO2\nRep 1, 3, 4, 5")
+dev.off()
+```
+
+## For figure 1
+
+Number of phosphorylation sites identified.
+
+```{r}
+# Number of amino acids:
+laa <- lapply(lf, function(x) {
+  lapply(x$phosphoSites, function(y) {
+    psiteInfo[names(psiteInfo) == y][[1]]$MonoSites
+  })
+})
+laaID <- lapply(laa, function(x) {
+  unlist(x)
+})
+  
+laa <- lapply(laaID, function(x) {
+  as.character(
+    sapply(x, function(y) {
+      gsub("[1234567890]", "", strsplit(y, "_", fixed = T)[[1]][2])
+    })
+  )
+})
+laa <- sapply(laa, function(x) {
+  gsub(";", "", x, fixed = T)
+})
+aa <- sapply(laa, table)
+name <- sapply(laa, function(x) names(table(x)))
+
+
+# Cumulative:
+## pYIP:
+aatot <- unique(c(laaID[[1]], laaID[[2]]))
+vec <- sapply(aatot, function(x) {
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
+})
+vec <- sapply(vec, function(x) {
+  gsub("[1234567890]", "", strsplit(x, "_", fixed = T)[[1]][2])
+})
+vec <- sapply(vec, function(x) {
+  gsub(";", "", x, fixed = T)
+})
+aa2 <- cbind("pYIP_R1" = aa[,1], "pYIP_R3"=table(vec))
+
+aatot <- unique(c(laaID[[1]], laaID[[2]], laaID[[3]]))
+vec <- sapply(aatot, function(x) {
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
+})
+vec <- sapply(vec, function(x) {
+  gsub("[1234567890]", "", strsplit(x, "_", fixed = T)[[1]][2])
+})
+vec <- sapply(vec, function(x) {
+  gsub(";", "", x, fixed = T)
+})
+aa2 <- cbind(aa2, "pYIP_R5"=table(vec))
+
+## TiO2:
+aatot <- unique(c(laaID[[4]], laaID[[5]]))
+vec <- sapply(aatot, function(x) {
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
+})
+vec <- sapply(vec, function(x) {
+  gsub("[1234567890]", "", strsplit(x, "_", fixed = T)[[1]][2])
+})
+vec <- sapply(vec, function(x) {
+  gsub(";", "", x, fixed = T)
+})
+aa1 <- cbind("TiO2_R1" = aa[,4], "TiO2_R3"=table(vec))
+
+aatot <- unique(c(laaID[[4]], laaID[[5]], laaID[[6]]))
+vec <- sapply(aatot, function(x) {
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
+})
+vec <- sapply(vec, function(x) {
+  gsub("[1234567890]", "", strsplit(x, "_", fixed = T)[[1]][2])
+})
+vec <- sapply(vec, function(x) {
+  gsub(";", "", x, fixed = T)
+})
+aa1 <- cbind(aa1, "TiO2_R4"=table(vec))
+
+aatot <- unique(c(laaID[[4]], laaID[[5]], laaID[[6]], laaID[[7]]))
+vec <- sapply(aatot, function(x) {
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
+})
+vec <- sapply(vec, function(x) {
+  gsub("[1234567890]", "", strsplit(x, "_", fixed = T)[[1]][2])
+})
+vec <- sapply(vec, function(x) {
+  gsub(";", "", x, fixed = T)
+})
+aa1 <- cbind(aa1, "TiO2_R5"=table(vec))
+
+laatables <- list("TiO2" = aa1, "pYIP"= aa2)
+
+for (i in seq_along(laatables)) {
+  tab <- laatables[[i]]
+  tab <- rbind(tab, colSums(tab))
+  row.names(tab)[nrow(tab)] <- "total"
+  laatables[[i]] <- tab
+}
+
+print(tab)
+
+aaNotRef <- sapply(lf, function(x) table(x$Amino.acid[x$psiteID %in% psitesNotInPhosphositePlus0]))
+aatot <- rbind(lf[[1]][,c("psiteID", "Amino.acid")], lf[[2]][,c("psiteID", "Amino.acid")])
+aatot <- aatot[!duplicated(aatot$psiteID),]
+aatot <- aatot[aatot$psiteID %in% psitesNotInPhosphositePlus0,]
+aaNotRef2 <- cbind("R1" = aaNotRef[,1], "R3"=table(aatot$Amino.acid))
+aatot <- rbind(lf[[1]][,c("psiteID", "Amino.acid")], lf[[2]][,c("psiteID", "Amino.acid")], lf[[3]][,c("psiteID", "Amino.acid")])
+aatot <- aatot[!duplicated(aatot$psiteID),]
+aatot <- aatot[aatot$psiteID %in% psitesNotInPhosphositePlus0,]
+aaNotRef2 <- cbind(aaNotRef2, "R4"=table(aatot$Amino.acid))
+aatot <- rbind(lf[[1]][,c("psiteID", "Amino.acid")], lf[[2]][,c("psiteID", "Amino.acid")], lf[[3]][,c("psiteID", "Amino.acid")], lf[[4]][,c("psiteID", "Amino.acid")])
+aatot <- aatot[!duplicated(aatot$psiteID),]
+aatot <- aatot[aatot$psiteID %in% psitesNotInPhosphositePlus0,]
+aaNotRef2 <- cbind(aaNotRef2, "R5"=table(aatot$Amino.acid))
+aatot <- rbind(lf[[1]][,c("psiteID", "Amino.acid")], lf[[2]][,c("psiteID", "Amino.acid")], lf[[3]][,c("psiteID", "Amino.acid")], lf[[4]][,c("psiteID", "Amino.acid")])
+aatot <- aatot[!duplicated(aatot$psiteID),]
+aatot <- aatot[aatot$psiteID %in% psitesNotInPhosphositePlus0,]
+aaNotRef2 <- cbind(aaNotRef2, "total"=length(aatot$Amino.acid))
+
+numtotSnotref <- length(unique(aatot$psiteID[aatot$Amino.acid=="S"]))
+numtotTnotref <- length(unique(aatot$psiteID[aatot$Amino.acid=="T"]))
+numtotYnotref <- length(unique(aatot$psiteID[aatot$Amino.acid=="Y"]))
+```
 --------------------------------------------------------------------------------
 
 ```{r}

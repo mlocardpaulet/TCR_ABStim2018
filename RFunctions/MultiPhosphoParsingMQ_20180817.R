@@ -82,6 +82,7 @@ MultiPhosphoParsingMQ <- function(tab) {
       mat2 <- cbind(row.names(mat2), mat2)
       mat2 <- cbind(matrix(ncol = ncol(tab)-ncol(mat2), nrow = nrow(mat2)), mat2)
       colnames(mat2) <- colnames(tab)
+      row.names(mat2) <- NULL
       tab <- rbind(tab, mat2)
     }
   }
@@ -102,6 +103,7 @@ MultiPhosphoParsingMQ <- function(tab) {
   mappingGenes <- tab[,c("Accession", "Gene.names", "Fasta.headers")]
   mappingGenes <- mappingGenes[!duplicated(mappingGenes),]
   mappingGenes <- mappingGenes[!is.na(mappingGenes$Accession),]
+  mappingGenes <- mappingGenes[!is.na(mappingGenes$Gene.names) & !is.na(mappingGenes$Gene.names),]
   tab$'Gene.names' <- as.character(tab$'Gene.names')
   tab$'Gene.names'[is.na(tab$'Gene.names')] <- as.character(mappingGenes$'Gene.names'[match(tab$Accession[is.na(tab$'Gene.names')], mappingGenes$Accession)])
   tab$'Fasta.headers' <- as.character(tab$'Fasta.headers')
