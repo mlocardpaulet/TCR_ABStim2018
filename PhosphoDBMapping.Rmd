@@ -5,7 +5,7 @@ date: '`r Sys.Date()`'
 output: html_document
 ---
 
-```{r, echo=F}
+```{r, echo=F, message=F}
 knitr::opts_chunk$set(echo = FALSE)
 
 require(knitr)
@@ -45,7 +45,7 @@ MappingList <- lapply(as.character(unique(MappingM[,1])), function(x){
 })
 names(MappingList) <- as.character(unique(MappingM[,1]))
 
-save(list = ls(), file = "RData/DBMapping/MappingPhospho_01.Rdata") # the names are the mouse ID
+save(list = c("MappingList", "MappingM", "myAcc"), file = "RData/DBMapping/MappingPhospho_01.Rdata") # the names are the mouse ID
 ```
 
 ```{r}
@@ -86,7 +86,7 @@ save(tabK, file = "RData/DBMapping/PsitePlus.RData")
 load(file = "RData/DBMapping/PsitePlus.RData")
 ```
 
-```{r, echo = F}
+```{r}
 load("RData/01_ParsedTables.RData")
 
 seq <- sapply(lf, function(x) {
@@ -114,14 +114,14 @@ vec <- as.character(sapply(seq[,1], substr, 9, 23))
 seq <- cbind(seq, "Window7" = vec)
 ```
 
-```{r, echo = F}
+```{r}
 psiteID <- names(psiteInfo)
 
 Known <- seq[,2][seq[,3] %in% as.character(tabK$SITE_...7_AA)]
 
 PPIDs <- tabK$ALL_SITEGPID[match(seq[,3], as.character(tabK$SITE_...7_AA))]
 seq <- data.frame(seq, "PhosphoPlusIDs" = PPIDs)
-seq <- seq[!is.na(seq$Window31),]
+seq <- seq[!is.na(as.character(seq$Window15)),]
 mapped <- unique(seq$phosphoSites[!is.na(seq$PhosphoPlusIDs)])
 notmapped <- unique(seq$phosphoSites[is.na(seq$PhosphoPlusIDs)])
 ```
@@ -183,181 +183,95 @@ On the `r nrow(seq2)` phosphorylation sites of the query, `r length(l)` have seq
 n <- sapply(l, function(x){length(unique(x))})
 ```
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+There are `r length(l[n>1])` cases where several sequences of the same organism match the input sequence window: `r sort(names(l[n>1]))`. I manually check these in PhosphositePlus.
 
-There are `r length(l[n>1])` cases where several sequences of the same organism match the input sequence window: `r names(l[n>1])`. I manually check these in PhosphositePlus.
-
-- `UT14A-S738` PhosphositePlus ID is "4732972"
-- `SUN2-S22` is "5861130"
-- `BRD4-S470` is "3072183"
-- `STIM2-S699` is "11164871"
-- `SRSF4-S268` mouse is not referenced
-- `FA53B-S167` is "15410046"
+```{r}
+ManualInput <- read.table("RData/DBMapping/ManualMapping.txt", sep = "\t", header = T, stringsAsFactors = F)
+```
 
 I manually add these in our data sets.
 
+```{r}
+for (i in seq_len(nrow(ManualInput))) {
+  l[[length(l)+1]] <- ManualInput[i,2]
+  names(l)[length(l)] <- ManualInput[i,1]
+}
+rm(seq2)
 
+seq$PhosphoPlusIDs <- as.character(seq$PhosphoPlusIDs)
+for (i in seq_along(l)) {
+  seq$PhosphoPlusIDs[seq$phosphoSites == names(l)[i]] <- paste(unique(l[[i]]), collapse = "|")
+}
 
-
-```{r, echo = F}
-l <- l[n==1]
-l <- sapply(l, unique)
-mer2$PhosphoPlusIDs <- l[match(mer2$psiteID, names(l))]
-names(mer2)[1:2] <- c("Sequences", "PsiteID")
-tab <- rbind(tab, mer2[,c(1,2,5)])
-IsMapped <- unique(as.character(tab$PsiteID))
+IsMapped <- unique(seq$phosphoSites[!is.na(seq$PhosphoPlusIDs)])
+NotMapped <- unique(seq$phosphoSites[is.na(seq$PhosphoPlusIDs)])
 ```
 
 I map back PhosphositePlus IDs and informations to annotated tables.
 
-```{r, echo = F}
-temp1 <- data.frame(ltab[[1]][,c(1,2,308,309,310,311,312:340)], "SamplePrep" = rep("TiO2", nrow(ltab[[1]])))
-temp2 <- data.frame(ltab[[2]][,c(1,2,188,189,190,191,192:220)], "SamplePrep" = rep("pY-IP", nrow(ltab[[2]])))
-temp2 <- temp2[grepl("-Y", temp2$psiteID, fixed = T),]
-temp1 <- temp1[!(temp1$psiteID %in% temp2$psiteID),]
-taball <- rbind(temp1, temp2)
-taball$PhosphositePlusID <- as.character(tab$PhosphoPlusIDs[match(taball$psiteID, tab$PsiteID)])
-taball$PhosphositePlusID[taball$psiteID=="UT14A-S738"] <- "4732972"
-taball$PhosphositePlusID[taball$psiteID=="SUN2-S22"] <- "5861130"
-taball$PhosphositePlusID[taball$psiteID=="BRD4-S470"] <- "3072183"
-taball$PhosphositePlusID[taball$psiteID=="STIM2-S699"] <- "11164871"
-taball$PhosphositePlusID[taball$psiteID=="FA53B-S167"] <- "15410046"
-```
-
-I know that this mapping is not perfect and some genes were absent from the mapping tables I used. So I double check and map the gene names. So I keep the gene names + position that match the ones in our data sets, and with the same 3-residues sequence surrounding the phosphosite.
-
-```{r, echo = F}
-g <- toupper(as.character(taball$Gene))
-g2 <- sapply(as.character(taball$psiteID), function(x) {
-  strsplit(x, "-", fixed = T)[[1]][2]
-})
-g <- paste0(g, "-", g2)
-taball$psiteIDPSITEPLUS <- g
-
-tabK$psiteID <- gsub("-p", "", tabK$MOD_RSD, fixed = T)
-g1 <- toupper(tabK$SUB_GENE)
-g1[is.na(g1)] <- toupper(tabK$GENE.x[is.na(g1)])
-g1[is.na(g1)] <- toupper(tabK$GENE.y[is.na(g1)])
-tabK$psiteID <- paste0(g1, "-", tabK$psiteID)
-
-p <- tabK$ALL_SITEGPID[match(taball$psiteIDPSITEPLUS[is.na(taball$PhosphositePlusID)], tabK$psiteID)]
-p[substr(tabK$SITE_...7_AA[match(taball$psiteIDPSITEPLUS[is.na(taball$PhosphositePlusID)], tabK$psiteID)], 7,9) != substr(taball$aligned_peptides[is.na(taball$PhosphositePlusID)], 7,9)] <- NA
-p[substr(tabK$psiteID[match(taball$psiteIDPSITEPLUS[is.na(taball$PhosphositePlusID)], tabK$psiteID)], 1,1) == "-"] <- NA
-
-taball$PhosphositePlusID[is.na(taball$PhosphositePlusID)] <- p
-```
-
-There are `r table(is.na(taball$PhosphositePlusID))` phosphorylation sites in our data set that are reported in phosphositePlus (download 20160518) and not reported, respectively.
-
-`r length(unique(taball$psiteID[is.na(taball$PhosphositePlusID) & taball$SamplePrep == "pY-IP"]))` sites from the pY-IP are not referenced in PhosphoSitePlus:
-`r unique(taball$psiteID[is.na(taball$PhosphositePlusID) & taball$SamplePrep == "pY-IP"])`
-
-```{r}
-save(taball, file = "annotatedTables02.RData")
-```
-
-```{r, echo = F}
-names(taball)[names(taball)=="PhosphositePlusID"] <- "ALL_SITEGPID"
-tabK <- tabK[,1:(ncol(tabK)-1)]
-mer3 <- merge(taball, tabK, by = "ALL_SITEGPID", all=T)
-mer3 <- mer3[!is.na(mer3$psiteID),]
-write.table(mer3, "PhosphoSitePlusProteomeScoutMapping.txt", sep = "\t", row.names = F)
-```
-
-There is `r length(unique(mer3$psiteID[!is.na(mer3$ClusterMerged) & is.na(mer3$ALL_SITEGPID)]))` phosphorylation sites that we identify regulated and that are not referenced in PhosphositePlus (download 20160518): `r sort(as.character(unique(mer3$psiteID[!is.na(mer3$ClusterMerged) & is.na(mer3$ALL_SITEGPID)])))`.
-
-# Graphical representation:
-
-I plot the kinases per cluster:
-
-```{r echo = F}
-tab <- mer3[!is.na(mer3$ClusterMerged),]
-sub <- tab[,names(tab) %in% c("psiteID", "ClusterMerged", "KINASE")]
-sub <- sub[!duplicated(sub),]
-sub <- sub[!is.na(sub$KINASE),]
-names(sub)[2] <- "Cluster"
-lsub <- lapply(unique(sub$Cluster), function(x){sub$KINASE[sub$Cluster==x]})
-names(lsub) <- unique(sub$Cluster)
-lkin <- lapply(lsub, table)
-lkin <- lapply(lkin, as.data.frame)
-lkin <- lapply(1:length(lkin), function(x){cbind(lkin[[x]], "Cluster" = rep(names(lsub)[[x]], nrow(lkin[[x]])))})
-gtab <- rbind(lkin[[1]], lkin[[2]])
-for (i in 3:length(lkin)) {
-  gtab <- rbind(gtab, lkin[[i]])
+```{r, eval = F}
+vec <- paste0(tabK$SUB_ACC_ID, "_", tabK$SUB_MOD_RSD)
+vec[vec == "NA_NA"] <- paste0(tabK$ACC_ID[vec == "NA_NA"], "_", gsub("-p", "", tabK$MOD_RSD[vec == "NA_NA"], fixed = T))
+tabKM <- tabK[tabK$ORGANISM == "mouse",]
+vecM <- vec[tabK$ORGANISM == "mouse"]
+  
+for (i in seq_along(psiteInfo)) {
+  li <- psiteInfo[[i]]
+  if (is.null(tabKM$ALL_SITEGPID[match(li$MonoSites, vecM)])) {
+    li$PhosphoSitePlusMouse <- NA
+  } else {
+    li$PhosphoSitePlusMouse <- tabKM$ALL_SITEGPID[match(li$MonoSites, vecM)]
+  }
+  if (is.null(seq$PhosphoPlusIDs[match(li$MonoSites, seq$phosphoSites)])) {
+    li$PhosphoSitePlusAll <- NA
+  } else {
+    li$PhosphoSitePlusAll <- seq$PhosphoPlusIDs[match(li$MonoSites, seq$phosphoSites)]
+  }
+  psiteInfo[[i]] <- li
 }
-names(gtab)[1] <- "Kinase"
+  
+save(psiteInfo, file = "RData/03_psiteInfoPhosphoSitePlus.RData")
 ```
-
-I have `r nrow(sub)` kinase-substrate relationships in the regulated data set.
 
 ```{r}
-gtab$Cluster <- as.character(gtab$Cluster)
-gtab$Cluster[gtab$Cluster=="-1"] <- "not defined cluster"
-gtab$Cluster <- factor(as.character(gtab$Cluster), levels = as.character(unique(gtab$Cluster))[c(5,4,1,3,2,9,6,8,7)])
-hm <- dcast(gtab, Cluster ~ Kinase, value.var = "Freq")
-hm2 <- as.matrix(hm[,2:ncol(hm)])
-row.names(hm2) <- hm[,1]
-hm2[is.na(hm2)] <- 0
-d <- dist(t(hm2))
-fit <- hclust(d)
-plot(fit)
-gtab$Kinase <- factor(as.character(gtab$Kinase), levels = fit$labels[rev(fit$order)])
-#gtab$Cluster <- factor(as.character(gtab$Cluster), levels = unique(as.character(gtab$Cluster))[c(3,1,5,4,8,6,9,2,7)])
-
-
-g <- ggplot(gtab, aes(x=Cluster, y = Kinase, size = Freq, col = Freq)) + geom_point() + scale_colour_gradient(name="Number of\nsubstrates", high="darkred", low="orange") + theme_bw() + ggtitle("Known kinases from PhosphositePlus") + theme(axis.text=element_text(size=8))
-print(g)
-
-na <- paste0("Figures_V3/KinasesFromPhosphositePlus.pdf")
-pdf(na, useDingbats=FALSE, 8.27, 11.69)
-print(g)
-dev.off()
+load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
 ```
 
-
-I plot the domains per cluster:
-
-```{r echo = F}
-tab <- mer3[!is.na(mer3$ClusterMerged),]
-sub <- tab[,names(tab) %in% c("psiteID", "ClusterMerged", "DOMAIN.y")]
-sub <- sub[!duplicated(sub),]
-sub <- sub[!is.na(sub$DOMAIN.y),]
-names(sub)[2] <- "Cluster"
-lsub <- lapply(unique(sub$Cluster), function(x){sub$DOMAIN.y[sub$Cluster==x]})
-names(lsub) <- unique(sub$Cluster)
-lkin <- lapply(lsub, function(x){unlist(sapply(x, function(y){strsplit(y, "; ", fixed = T)}))})
-lkin <- lapply(lkin, table)
-lkin <- lapply(lkin, as.data.frame)
-lkin <- lapply(1:length(lkin), function(x){cbind(lkin[[x]], "Cluster" = rep(names(lsub)[[x]], nrow(lkin[[x]])))})
-gtab <- rbind(lkin[[1]], lkin[[2]])
-for (i in 3:length(lkin)) {
-  gtab <- rbind(gtab, lkin[[i]])
+```{r, eval = F}
+for (i in seq_along(lf)) {
+  tab <- lf[[i]]
+  tab$PSPAllSPecies <- sapply(tab$phosphoSites, function(x) {
+    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusAll
+  })
+  tab$PSPMouse <- sapply(tab$phosphoSites, function(x) {
+    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusMouse
+  })
+  lf[[i]] <- tab
 }
-names(gtab)[1] <- "Kinase"
+  
+save(lf, file = "RData/04_ParsedTablesPSP.RData")
 ```
 
-I have `r nrow(sub)` kinase-substrate relationships in the regulated data set.
+```{r}
+load(file = "RData/04_ParsedTablesPSP.RData")
+```
 
 ```{r}
-gtab$Cluster <- as.character(gtab$Cluster)
-gtab$Cluster[gtab$Cluster=="-1"] <- "not defined cluster"
-gtab$Cluster <- factor(as.character(gtab$Cluster), levels = as.character(unique(gtab$Cluster))[c(7,4,3,2,5,6,1,8,9)])
-hm <- dcast(gtab, Cluster ~ Kinase, value.var = "Freq")
-hm2 <- as.matrix(hm[,2:ncol(hm)])
-row.names(hm2) <- hm[,1]
-hm2[is.na(hm2)] <- 0
-d <- dist(t(hm2))
-fit <- hclust(d)
-plot(fit)
-gtab$Kinase <- factor(as.character(gtab$Kinase), levels = fit$labels[rev(fit$order)])
-#gtab$Cluster <- factor(as.character(gtab$Cluster), levels = unique(as.character(gtab$Cluster))[c(3,1,5,4,8,6,9,2,7)])
-names(gtab)[1] <- "Domain"
+vec <- sapply(psiteInfo, function(x) {x$PhosphoSitePlusAll})
+notmapped <- names(vec)[is.na(vec)]
+mapped <- names(vec)[!is.na(vec)]
 
-g <- ggplot(gtab, aes(x=Cluster, y = Domain, size = Freq, col = Freq)) + geom_point() + scale_colour_gradient(name="Number of\ndomains", high="darkred", low="orange") + theme_bw() + ggtitle("Known domains from PhosphositePlus") + theme(axis.text=element_text(size=8))
-print(g)
+vec <- sapply(psiteInfo, function(x) {x$GeneID})
+vec <- unlist(vec)
+vec <- as.character(vec[names(psiteInfo) %in% notmapped])
+vec <- vec[grepl("_Y", vec, fixed = T)]
+```
 
-na <- paste0("Figures_V3/DomainsFromPhosphositePlus.pdf")
-pdf(na, useDingbats=FALSE, 8.27, 11.69)
-print(g)
-dev.off()
+There are `r length(mapped)` and `r length(notmapped)` phosphorylation sites in our data set that are reported in phosphositePlus and not reported, respectively.
+
+ sites from the pY-IP are not referenced in PhosphoSitePlus:
+`r sort(vec)`.
+
+```{r}
+sessionInfo()
 ```
