@@ -21,6 +21,7 @@ Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 - "01_ParsedTables.RData": Phospho(STY) tables from MaxQuant after parsing through the function "MultiPhosphoParsingMQ" to get the ID of the multi-phosphorylated peptides.
 - "02_psitesInfo.RData": list of all the phosphosites of the analysis with their different IDs.
 - "03_psiteInfoPhosphoSitePlus.RData": list of all the IDs of the phosphosites of the data set, with the phosphositePlus references (Mouse and all organisms if no mouse found)(see the file "PhosphoDBMapping.Rmd" to get the details). 
+- "04_ParsedTablesPSP.RData": Quantification data with the PhosphoSitePlus ID.
 
 
 ## Data analysis:
