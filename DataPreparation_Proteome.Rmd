@@ -1,0 +1,146 @@
+---
+title: "TCR phospho-signalling upon antibody-based stimulation"
+author: "Marie Locard-Paulet"
+date: '`r date()`'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(venneuler)
+library(reshape2)
+library(ggplot2)
+library(gplots)
+library(knitr)
+library(corrplot)
+
+mlpcolours <- c("seagreen3", "brown2", "skyblue4", "tan1", "lightseagreen", "hotpink4", "lightpink1", "blue3")
+
+mlpplot90 <- function(plot) {
+        print(plot + theme_minimal() + scale_fill_brewer(palette = "Set1") + theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 8)))
+}
+
+# Functions for the pairwise scatterplots:
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor) {
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r = (cor(x[complete.cases(x) & complete.cases(y)], y[complete.cases(y) & complete.cases(x)]))
+  txt <- format(c(r, 0.123456789), digits=digits)[1]
+  txt <- paste(prefix, txt, sep="")
+  if(missing(cex.cor)) cex <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex * abs(r))
+}
+panel.hist <- function(x, ...) {
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks; nB <- length(breaks)
+  y <- h$counts; y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+}
+```
+
+--------------------------------------------------------------------------------
+
+# Protein relative quantification
+
+```{r inputProt}
+BioRep <- c("R1", "R3", "R4", "R5")
+path <- "./RAW/PeptideSamples/"
+files <- list.files(path, pattern = ".txt")
+prot <- read.delim(paste0(path, files), stringsAsFactors = F)
+```
+
+## Number of identified proteins
+
+We count the number of identified proteins per run: Number of `By MS/MS` value in the columns containing `Identification.type.`.
+
+```{r}
+tab <- prot[,grepl("Identification.type.", names(prot), fixed = T)]
+numbers <- apply(tab, 2, table)
+kable(t(numbers))
+gtab <- melt(numbers)
+gtab$Var1 <- factor(as.character(gtab$Var1), levels = c("By MS/MS", "By matching"))
+gtab$Var2 <- sapply(as.character(gtab$Var2), function(x) strsplit(x, "RR_ProFI_", fixed = T)[[1]][2])
+# ggplot(gtab, aes(x=Var2, y = value, fill = factor(Var1))) + geom_bar(stat = "identity", alpha = 0.8) + theme_minimal() + scale_fill_brewer(palette = "Set1") + theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 3)) + xlab("") + ylab("") + ggtitle("Number of identified protein per run")
+ggplot(gtab, aes(x=Var2, y = value, fill = factor(Var1))) + geom_bar(stat = "identity", alpha = 0.8, position = "dodge") + theme_minimal() + scale_fill_brewer(palette = "Set1") + theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 3)) + xlab("") + ylab("") + ggtitle("Number of identified protein per run")
+```
+
+There are `r length(unique(prot$Protein.IDs))` unique proteins identified in the input table.
+
+We filter the table:
+
+* Remove the `Protein.IDs` fields containing `CON_` or `_REV`.
+* Remove the proteins with 0 or 1 unique peptide identified.
+* Replace the 0 LFQ values with NA.
+
+
+```{r, echo = F}
+n0 <- nrow(prot)
+prot <- prot[!grepl("CON_", prot$Protein.IDs) & !grepl("REV_", prot$Protein.IDs),]
+n1 <- nrow(prot)
+prot <- prot[prot$Unique.peptides>1,]
+n2 <- nrow(prot)
+tabp <- prot[,grepl("LFQ", names(prot))]
+tabp[tabp==0] <- NA
+row.names(tabp) <- as.character(prot$Protein.IDs)
+```
+
+Number of:                                                                  
+-------------------------------------------------------- -------------------
+proteins in the input table                                  `r n0`  
+proteins that are not contaminant                            `r n1` 
+proteins that have a minimum of one unique peptide           `r n2`  
+-------------------------------------------------------- -------------------
+
+```{r, echo = F}
+gtab <- melt(tabp)
+gtab$variable <- sapply(as.character(gtab$variable), function(x) strsplit(x, "RR_ProFI_", fixed = T)[[1]][2])
+g <- ggplot(gtab, aes(x = variable, y = log2(value))) + geom_boxplot() + ggtitle("Log2-transformed LFQ")
+mlpplot90(g)
+dev.off()
+```
+
+I make a figure with correlation between all runs for the supplementary data of the paper:
+
+```{r}
+col1 <- colorRampPalette(c("darkred", "red", "indianred1", "white", "white", "white", "white", "white", "white", "white", "cornflowerblue", "blue", "darkblue", "black")) 
+
+cormat <- tabp
+
+cormat <- log10(cormat)
+M <- cor(cormat, use = "complete.obs")
+vec <- sapply(colnames(M), function(x) {
+  strsplit(x, "Inj", fixed = T)[[1]][1]
+})
+M1 <- M
+for (i in seq_len(nrow(M))) {
+  for (j in seq_len(ncol(M))) {
+    if (vec[j] != vec[i]) {
+      M[i,j] <- NA
+    }
+    if (colnames(M)[j] == row.names(M)[i]) {
+      M[i,j] <- NA
+    }
+  }
+}
+corrplot(M1, method = "shade", col=col1(600), mar = c(1,1,1,1), tl.cex = 0.4, tl.col = "black", order = "hclust")  
+gtab <- melt(M)
+ggplot(gtab, aes(x = value)) + geom_histogram(bins = 50) + theme_bw() + ggtitle("Correlation values between runs in the Protein data set\nbefore data analysis (R from cor() function)")
+
+pdf("Figures/QCTechnicalReplicates_Prot.pdf", useDingbats=FALSE, 11.69, 8.27) # width and height in inches.
+corrplot(M1, method = "shade", col=col1(600), mar = c(1,1,1,1), tl.cex = 0.4, tl.col = "black", order = "hclust")  
+ggplot(gtab, aes(x = value)) + geom_histogram(bins = 50) + theme_bw() + ggtitle("Correlation values between runs in the protein data set\nbefore data analysis (R from cor() function)")
+dev.off()
+```
+
+```{r}
+save(prot, file = "RData/06_Prottab.RData")
+```
+
+--------------------------------------------------------------------------------
+
+```{r}
+sessionInfo()
+```
