@@ -31,3 +31,5 @@ Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 The data was prepared and normalised with the scripts in "DataPreparation.Rmd/html" with some quality control. See "DataPreparation_Proteome.Rmd/html" for the quality control of the proteins data.
 
 The scripts used for the statistical testing of the data (including kinetics normalisation and replacement of missing values) are in the folder `StatisticalAnalysis`.
+
+The clustering of the phosphorylation sites is performed in the document "PhoshositesClustering".
