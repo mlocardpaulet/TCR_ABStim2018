@@ -11,7 +11,7 @@
 
 <meta name="author" content="Marie Locard-Paulet" />
 
-<meta name="date" content="2018-08-20" />
+<meta name="date" content="2018-08-23" />
 
 <title>Mapping phosphorylation sites to known sites in the databases</title>
 
@@ -124,7 +124,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Mapping phosphorylation sites to known sites in the databases</h1>
 <h4 class="author"><em>Marie Locard-Paulet</em></h4>
-<h4 class="date"><em>2018-08-20</em></h4>
+<h4 class="date"><em>2018-08-23</em></h4>
 
 </div>
 
@@ -132,9 +132,9 @@ $(document).ready(function () {
 <p>This document retrieves the information from specific phosphorylation sites databases in order to analyse the label-free MS data sets of phospho-enriched peptides from primary T-cells.</p>
 <p>I use the mapping files from <a href="http://www.phosphortholog.com/">PhosphOrtholog</a>, Chadhuri et al. 2015 (10.1186/s12864-015-1820-x). From these, I retrieve the Uniprot IDs of Rat and Human corresponding to the ones I have in my data set.</p>
 <p>Protein accessions that are in my data but not in my mapping file:</p>
-<pre><code>##  [1] &quot;O35368&quot;  &quot;Q64G17&quot;  &quot;P01896&quot;  &quot;P14428&quot;  &quot;P03991&quot;  &quot;P01902&quot;  &quot;P04223&quot; 
-##  [8] &quot;P03975&quot;  &quot;PrimeXS&quot; &quot;P24161&quot;  &quot;P84228&quot;  &quot;Q60817&quot;  &quot;Q61029&quot;  &quot;Q6PIU9&quot; 
-## [15] &quot;Q6ZWY8&quot;  &quot;Q80SZ7&quot;  &quot;Q8BTY2&quot;</code></pre>
+<pre><code>##  [1] &quot;O35368&quot; &quot;Q64G17&quot; &quot;P01896&quot; &quot;P01902&quot; &quot;P03991&quot; &quot;P04223&quot; &quot;P14428&quot;
+##  [8] &quot;P84228&quot; &quot;P03975&quot; &quot;P24161&quot; &quot;Q60817&quot; &quot;Q61029&quot; &quot;Q6PIU9&quot; &quot;Q6ZWY8&quot;
+## [15] &quot;Q80SZ7&quot; &quot;Q8BTY2&quot;</code></pre>
 <div id="retrieve-information-from-phosphositeplus" class="section level1">
 <h1>Retrieve information from PhosphositePlus</h1>
 <p>I work with the tables downloaded from the <a href="http://www.phosphosite.org/homeAction.action">PhosphositePlus website</a> the 17th of August 2018:</p>
@@ -144,14 +144,14 @@ $(document).ready(function () {
 </ul>
 <p>I merge the tables based on the substrate sequence window (in upper cases). In order to map kinases and domains to our result table, I use the sequence window to map the phosphosites we identify to the phosphositeplus table.</p>
 <p>On top of keeping the kinase/substrate and domains information, I create a column called <code>InPsitePlus</code> that contains “yes” or “no” depending on if this phosphosite has already been references in the database.</p>
-<p>There are 7996 phosphorylation sites of our data set mapped to PhosphositePlus IDs due to exact identical sequence. Using this simple matching approach, 1595 of the phosphorylation sites of the data set are not mapped to PhosphositePlus IDs. This can be explained by the absence of the phosphorylation site from PhosphositePlus data base or because it is referenced with a slightly dissimilar sequence due to the fact that it has been observed in an other species (not mouse - so dissimilar sequence). In total, we have 9591 phosphorylation sites in our data set.</p>
+<p>There are 7965 phosphorylation sites of our data set mapped to PhosphositePlus IDs due to exact identical sequence. Using this simple matching approach, 1595 of the phosphorylation sites of the data set are not mapped to PhosphositePlus IDs. This can be explained by the absence of the phosphorylation site from PhosphositePlus data base or because it is referenced with a slightly dissimilar sequence due to the fact that it has been observed in an other species (not mouse - so dissimilar sequence). In total, we have 9560 phosphorylation sites in our data set.</p>
 <p>In order to gain information from these sites, I look for similar sequences using the “pairwiseAlignment()” function.</p>
 <p>On the 1596 phosphorylation sites of the query, 583 have sequence matches.</p>
-<p>There are 43 cases where several sequences of the same organism match the input sequence window: A2ADY9_S127, A6H8H2_S1273, B1AY13_S1376, B1AY13_S1378, B1AZI6_S1421, O35280_S316, P22682_S804, P42859_S408, P51432_S480, P83093_S699, P97360_S29, Q14B71_S295, Q3UND0_T7, Q3UZA1_S126, Q5PSV9_S1052, Q5PSV9_S1053, Q5PSV9_S1176, Q5PSV9_T1106, Q5SW75_S1216, Q60775_S333, Q61687_S34, Q62179_S779, Q640M1_S738, Q6Y7W8_S377, Q6ZPR6_S993, Q8BGR5_S167, Q8BJS4_S21, Q8BJS4_S22, Q8C0V0_S743, Q8C0V0_S744, Q8CHI8_S164, Q8CI08_S88, Q8K3Z9_S83, Q8K4Q0_S881, Q8VE97_S268, Q8VI36_S320, Q91VY6_S65, Q9D0N7_S416, Q9ERU9_S2124, Q9ESU6_S470, Q9WUA3_S8, Q9WUU8_S447, Q9WVA4;Q9R1Q8_S11;11. I manually check these in PhosphositePlus.</p>
+<p>There are 43 cases where several sequences of the same organism match the input sequence window: A2ADY9_S127, A6H8H2_S1273, B1AY13_S1376, B1AY13_S1378, B1AZI6_S1421, O35280_S316, P22682_S804, P42859_S408, P51432_S480, P83093_S699, P97360_S29, Q14B71_S295, Q3UND0_T7, Q3UZA1_S126, Q5PSV9_S1052, Q5PSV9_S1053, Q5PSV9_S1176, Q5PSV9_T1106, Q5SW75_S1216, Q60775_S333, Q61687_S34, Q62179_S779, Q640M1_S738, Q6Y7W8_S377, Q6ZPR6_S993, Q8BGR5_S167, Q8BJS4_S21, Q8BJS4_S22, Q8C0V0_S743, Q8C0V0_S744, Q8CHI8_S164, Q8CI08_S88, Q8K3Z9_S83, Q8K4Q0_S881, Q8VE97_S268, Q8VI36_S320, Q91VY6_S65, Q9D0N7_S416, Q9ERU9_S2124, Q9ESU6_S470, Q9R1Q8;Q9WVA4_S11;11, Q9WUA3_S8, Q9WUU8_S447. I manually check these in PhosphositePlus.</p>
 <p>I manually add these in our data sets.</p>
 <p>I map back PhosphositePlus IDs and informations to annotated tables.</p>
-<p>There are 9067 and 1012 phosphorylation sites in our data set that are reported in phosphositePlus and not reported, respectively.</p>
-<p>sites from the pY-IP are not referenced in PhosphoSitePlus: Atp13a3_Y394, Cd3g_Y168, Cntrob_Y57, Eif4e_Y197, Hmha1_Y561, Inpp4b_Y499, Itgb2_Y676, Itsn2_Y759, Kat6b_Y863, Map4k1_Y358, Mbd3_Y52, Mcmbp_Y145, Pfkp_Y15, Ptpn7_Y125, Ranbp2_Y2514, Sh3kbp1_Y315, Skap1_Y188, Srsf3_Y104, Srsf6_Y37, TCAIM_Y88, Timp1_Y62, Trim35_Y283, Trim35_Y289, Zcchc8_Y404, Znf592_Y568, Zwint_Y217.</p>
+<p>There are 9035 and 1012 phosphorylation sites in our data set that are reported in phosphositePlus and not reported, respectively.</p>
+<p>sites from the pY-IP are not referenced in PhosphoSitePlus: Brk1_Y63, Cblb_Y708, Cblb_Y763, Cd3d_Y149+T158, Cd3g_Y160, Cd3g_Y168, Cd3g_Y171, Dbi_Y29, Dyrk2_Y380;379, Eno1_Y44;44, Etv6_Y235, Gmds_Y323, Gmds_Y324, Lax1_Y88, Lck_Y192, Lime1_Y137, Lime1_Y175, Mapk3_Y205, Ndc80_Y458, Pea15_Y108, Ptpn1_Y46, Ptpn6_Y564, Rbm17_Y214, Rbmxl1_Y203;206, Rfc1_Y105, Slamf1_Y288, Slc4a7_Y49, Stat3_Y705, Stat4_Y694, Stat6_Y641, Sugp1_Y481, TCAIM_Y88, Tubb4b_Y50, Zap70_Y473.</p>
 <pre><code>## R version 3.4.4 (2018-03-15)
 ## Platform: x86_64-w64-mingw32/x64 (64-bit)
 ## Running under: Windows 7 x64 (build 7601) Service Pack 1

@@ -22,8 +22,12 @@ Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 - "02_psitesInfo.RData": list of all the phosphosites of the analysis with their different IDs.
 - "03_psiteInfoPhosphoSitePlus.RData": list of all the IDs of the phosphosites of the data set, with the phosphositePlus references (Mouse and all organisms if no mouse found)(see the file "PhosphoDBMapping.Rmd" to get the details). 
 - "04_ParsedTablesPSP.RData": Quantification data with the PhosphoSitePlus ID.
+- "05_ParsedTablesNormPSP.RData": Data normalised for technical instrument variation using the intensities of the iRT. Also, I removed some runs that overperformed. 
+- "06_Prottab.RData": Protein data (raw).
 
 
 ## Data analysis:
 
-The data was prepared and normalised with the scripts in "DataPreparation.Rmd/html".
+The data was prepared and normalised with the scripts in "DataPreparation.Rmd/html" with some quality control. See "DataPreparation_Proteome.Rmd/html" for the quality control of the proteins data.
+
+The scripts used for the statistical testing of the data (including kinetics normalisation and replacement of missing values) are in the folder `StatisticalAnalysis`.

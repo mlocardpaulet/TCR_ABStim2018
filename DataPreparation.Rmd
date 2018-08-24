@@ -116,14 +116,90 @@ for (i in seq_along(lf)) {
   sitespos <- sapply(as.character(tab$phosphoSites), function(x) {
     strsplit(x, "_", fixed = T)[[1]][2]
   })
-  tab$psiteGeneID <- paste0(tab$`Gene.names`, "_", sitespos)
   lf[[i]] <- tab
 }
 names(lf) <- sapply(names(lf), function(x) {
   substr(x, start = nchar("pYIP/Phospho (STY)Sites_ProFI-S4_p"), stop = nchar("pYIP/Phospho (STY)Sites_ProFI-S4_pYIP_R1"))
 })
+```
+
+I correct some issues with protein IDs:
+
+```{r, eval = F}
+for (j in seq_along(lf)) {
+  ID <- lf[[j]]$phosphoSites
+  pos <- sapply(ID, function(x) {
+    strsplit(x, "_", fixed = T)[[1]][2]
+  })
+  # I remove discrepencies in the names of the phosphosites for ambiguous peptides comming from different files:
+  
+  ## I remove the PrimeXS peptide IDs
+  PrimeXS <- ";PrimeXS"
+  if ((sum(grepl(PrimeXS, ID, fixed = T)))>0) {
+    vec <- lapply(pos[grepl(PrimeXS, ID, fixed = T)], function(x) strsplit(x, ";", fixed = T)[[1]])
+    vec <- lapply(1:length(vec), function(x) vec[[x]][1:(length(vec[[x]])-1)])
+    vec <- sapply(vec, function(x) {
+      paste(x, collapse = ";")
+    })
+    newID <- gsub(PrimeXS, "", ID[grepl(PrimeXS, ID, fixed = T)])
+    newID <- sapply(newID, function(x) {
+      strsplit(x, "_")[[1]][1]
+    })
+    newID <- paste0(newID, "_", vec)
+    ID[grepl(PrimeXS, ID, fixed = T)] <- newID
+  }
+  
+  # I reorder the IDs in the alphabetical order of the protein accessions:
+  prot <- lapply(ID, function(x) {
+    strsplit(x, "_")[[1]][1]
+  })
+  site <- lapply(ID, function(x) {
+    strsplit(x, "_")[[1]][2]
+  })
+  for (i in seq_along(prot)) {
+    if (grepl(";", prot[[i]])){
+      veci <- strsplit(prot[[i]], ";", fixed = T)[[1]]
+      o <- order(veci)
+      if (grepl("+", site[[i]])) {
+        veci2 <- strsplit(site[[i]], "+", fixed = T)[[1]]
+        aa <- sapply(veci2, function(x) {
+          substr(x, 1, 1)
+        })
+        veci2 <- lapply(veci2, function(x) {
+          strsplit(substr(x, 2, nchar(x)), ";", fixed = T)[[1]]
+        })
+        veci2 <- lapply(seq_along(veci2), function(x) {
+          paste0(aa[x], paste(veci2[[x]][o], collapse = ";"))
+        })
+        veci2 <- paste(unlist(veci2), collapse = "+")
+      } else {
+        aa <- substr(site[[i]], 1, 1)
+        x <- site[[i]]
+        veci2 <- strsplit(substr(x, 2, nchar(x)), ";", fixed = T)[[1]]
+        veci2 <- paste0(aa, paste(veci2[o], collapse = ";"))
+      }
+      veci <- paste(veci[o], collapse = ";")
+      ID[i] <- paste0(veci, "_", veci2)
+    }
+  }
+  
+  # Put together LCK-394 and FYN|YES|SRC-Y420|424|424:
+  ID[ID=="P05480;P39688;Q04736_Y424;420;424"] <- "P05480;P06240;P39688;Q04736_Y424;394;420;424"
+  ID[ID=="P05480;P06240;Q04736_Y424;394;424"] <- "P05480;P06240;P39688;Q04736_Y424;394;420;424"
+  
+  lf[[j]]$phosphoSites <- ID
+  sitespos <- sapply(ID, function(x) {
+    strsplit(x, "_", fixed = T)[[1]][2]
+  })
+  lf[[j]]$psiteGeneID <- paste0(lf[[j]]$Gene.names, "_", sitespos)
+  
+  lf[[j]] <- lf[[j]][as.character(lf[[j]]$phosphoSites) != "P06240_Y394",]
+}
+
+        
 save(lf, file = "RData/01_ParsedTables.RData")
 ```
+
 
 I create a list with for each phosphorylation site ID its ID with gene name (for figures) and the list of all the mono-phosphorylations it corresponds to.
 
@@ -137,8 +213,11 @@ for (i in seq_along(lf)) {
   vec <- sapply(as.character(lf[[i]]$phosphoSites), function(x) {
     strsplit(x, "_", fixed = T)[[1]][2]
   })
+  vecAcc <- sapply(as.character(lf[[i]]$phosphoSites), function(x) {
+    strsplit(x, "_", fixed = T)[[1]][1]
+  })
   vec <- lapply(seq_along(vec), function(x) {
-    paste0(lf[[i]]$Accession[x], "_", strsplit(vec[x], "+", fixed = T)[[1]])
+    paste0(vecAcc[x], "_", strsplit(vec[x], "+", fixed = T)[[1]])
   })
   names(vec) <- vecID[[i]]
   lMono[[i]] <- vec
@@ -350,7 +429,11 @@ aminoacidtable <- aa
 ## pYIP:
 aatot <- unique(c(laaID[[1]], laaID[[2]]))
 vec <- sapply(aatot, function(x) {
-  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
+  if (x %in% names(psiteInfo)) {
+    psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
+  } else {
+    NA
+  }
 })
 vec <- unique(vec)
 vec <- sapply(vec, function(x) {
@@ -467,7 +550,7 @@ vec <- sapply(vec, function(x) {
 vec <- sapply(vec, function(x) {
   gsub(";", "", x, fixed = T)
 })
-aa2 <- cbind("pYIP_R1" = aa[,1], "pYIP_R4"=table(vec))
+aa2 <- cbind("pYIP_R1" = aa[1:3,1], "pYIP_R4"=table(vec))
 
 aatot <- unique(c(laaID[[1]], laaID[[2]], laaID[[3]]))
 vec <- sapply(aatot, function(x) {
@@ -496,7 +579,7 @@ vec <- sapply(vec, function(x) {
 vec <- sapply(vec, function(x) {
   gsub(";", "", x, fixed = T)
 })
-aa1 <- cbind("TiO2_R1" = aa[,4], "TiO2_R3"=table(vec))
+aa1 <- cbind("TiO2_R1" = aa[1:3,4], "TiO2_R3"=table(vec))
 
 aatot <- unique(c(laaID[[4]], laaID[[5]], laaID[[6]]))
 vec <- sapply(aatot, function(x) {
@@ -604,7 +687,7 @@ dev.off()
 # Not referenced in psitePlus:
 ###############################
 aa <- cbind(laatablesNotRef[[1]], laatablesNotRef[[2]])
-aa[row.names(aa) == "total"] <- colSums(aa[1:3,])
+aa <- rbind(aa, "total" = colSums(aa))
 
 gtab <- melt(aa)
 gtab$value[gtab$Var1 == "total" & (gtab$Var2 == "pYIP_R1" | gtab$Var2 == "pYIP_R4")] <- NA
