@@ -1,5 +1,6 @@
 # load(file = "RData/08_StatResults_Phospho.RData")
 # tab <- export
+# tab <- read.table(file = "SupTables/PhosphoData.txt", sep = "\t", header = T)
 colours <- c("blue4", "deepskyblue4", "lightseagreen", "mediumspringgreen")
 
 PlotSite <- function(psites, tab) { # psites is the vector of phosphosite ID to plot, tab is the table with the appropriate quantification values
@@ -25,7 +26,7 @@ PlotSite <- function(psites, tab) { # psites is the vector of phosphosite ID to 
       gtab$TimePoint <- as.numeric(as.character(gtab$TimePoint))
       gtab <- gtab[!is.na(gtab$value),]
       
-      g <- ggplot(gtab, aes(x = TimePoint, y = value)) + geom_line(aes(x = TimePoint, y = value, group = Replicate, col = Replicate), size = 1.2)+ geom_vline(xintercept = 0, size = 1.2) + theme_minimal() + ggtitle(el) + scale_color_manual(values = colours[seq_along(unique(gtab$Replicate))]) + ylab("log2-transformed normalised MS intensities") # + geom_boxplot(aes(x = TimePoint, y = value), width = 0.5)
+      g <- ggplot(gtab, aes(x = TimePoint, y = value)) + geom_line(aes(x = TimePoint, y = value, group = Replicate, col = Replicate), size = 1.2) + geom_vline(xintercept = 0, size = 1.2) + geom_point(col = "black", shape = "|", size = 5, alpha = 0.9) + theme_minimal() + ggtitle(el) + scale_color_manual(values = colours[seq_along(unique(gtab$Replicate))]) + ylab("log2-transformed normalised MS intensities") # + geom_boxplot(aes(x = TimePoint, y = value), width = 0.5)
     } else {
       print(paste0("No quantification values for ", el, "."))
     }
@@ -40,5 +41,7 @@ PlotSite <- function(psites, tab) { # psites is the vector of phosphosite ID to 
 
 ################################################################################
 
-psites <- as.character(tab$psiteID[tab$Regulation == "TRUE"][order(tab$pAnova[tab$Regulation == "TRUE"], decreasing = T)][1:30])
+# psites <- as.character(tab$psiteID[tab$Regulation == "TRUE"][order(tab$pAnova[tab$Regulation == "TRUE"], decreasing = T)][1:30])
+psites <- as.character(tab$psiteID[tab$ClusterMerged == "9"])
+psites <- psites[!is.na(psites)]
 PlotSite(psites, tab)

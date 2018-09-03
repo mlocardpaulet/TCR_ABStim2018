@@ -343,13 +343,11 @@ for (i in 9) {
 
 ```
 
-<!--
 Graphical representation of the different clusters with real values:
-*Here I re-ordered the clusters for the paper based on their kinetic shape and not the number of site:* I reorder as follows: 1, 2, 3, 7, 8, 5, 4, 6.
--->
+*Here I re-ordered the clusters for the paper based on their kinetic shape and not the number of site:* I reorder as follows: 3, 4, 5, 6, 9, 2, 1, 7, 8.
 
-```{r, eval = F}
-mapping <- data.frame("ClusteringOuptut" = sort(unique(clusres$cluster)), "NewOrdering" = c(-1, 1, 2, 3, 7, 6, 8, 4, 5))
+```{r, eval = T}
+mapping <- data.frame("ClusteringOuptut" = sort(unique(clusres$cluster)), "NewOrdering" = c(-1, 7, 6, 1, 2, 3, 4, 8, 9, 5))
 clusres$cluster <- mapping$NewOrdering[match(clusres$cluster, mapping$ClusteringOuptut)]
 ```
 
@@ -503,7 +501,7 @@ gtab2$RelativeToTot[gtab2$AminoAcid=="pS"] <- gtab2$RelativeToTot[gtab2$AminoAci
 gtab2$RelativeToTot[gtab2$AminoAcid=="pT"] <- gtab2$RelativeToTot[gtab2$AminoAcid=="pT"]/totpT
 gtab2 <- gtab2[!is.na(gtab2$Var1),]
 
-g4 <- ggplot(gtab2, aes(x = 0, y = RelativeToTot, fill = Var1, group = group)) +  geom_bar(width = 1, stat = "identity", position = "dodge", col = "grey80")  + ggtitle("Relative quantities per cluster") + scale_fill_manual(values = c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black")[c(9,8,7,6,5,4,3,2,1, 10)]) + theme_minimal()
+g4 <- ggplot(gtab2, aes(x = group, y = RelativeToTot, fill = Var1, group = group)) +  geom_bar(width = 1, stat = "identity", position = "dodge", col = "grey80")  + ggtitle("Relative quantities per cluster") + scale_fill_manual(values = c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black")[c(9,8,7,6,5,4,3,2,1, 10)]) + theme_minimal() 
 print(g4)
 
 na <- "Figures/ClustersPerAA.pdf"
