@@ -1,0 +1,116 @@
+---
+title: "TMT analysis of OT-1 T-cells upon TCR stimulation"
+author: "Marie Locard-Paulet"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+
+```{r Packages, echo=FALSE, message=FALSE, warning=FALSE}
+library(gplots)
+library(knitr)
+library(reshape2)
+library(ggplot2)
+library(dbscan)
+library(missMDA)
+
+knitr::opts_chunk$set(echo = FALSE)
+
+colourClus <- c("black", "#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue")
+```
+
+
+```{r}
+load(file = "RData/11_TableClusters.RData")
+tab <- export
+source("RFunctions/PCAPlots.R")
+load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
+```
+
+I use as input the fold changes upon TCR activation.
+
+# PCA plots
+
+```{r}
+mat <- tab[,grepl(".FC", names(tab), fixed = T)]
+row.names(mat) <- tab$psiteID
+# Keep only the regulated sites:
+mat <- mat[row.names(mat) %in% tab$psiteID[tab$Regulation == "TRUE"],]
+
+# Imputation of missing data:
+nb <- estim_ncpPCA(mat, scale = F)
+comp <- imputePCA(mat, ncp = 2, scale = F)
+
+pca <- prcomp(comp$completeObs, scale = F, center = F)
+plotSDev(pca)
+plotGenes(pca)
+
+gtab <- data.frame("x" = pca$x[,1], "y" = pca$x[,2], "ID" = row.names(pca$x))
+gtab$Cluster <- tab$ClusterMerged[match(gtab$ID, tab$psiteID)]
+gtab$GeneID <- sapply(gtab$ID, function(x) {
+    psiteInfo[[which(names(psiteInfo) == x)]]$GeneID
+  })
+gtab$labels <- gtab$GeneID
+gtab$labels[!grepl("Cd", gtab$labels)] <- ""
+ggplot(gtab, aes(x = x, y = y, col = factor(Cluster), label = labels)) + geom_point(alpha = 0.6, size = 3) + scale_color_manual(values = colourClus) + theme_bw() + labs(title = "PCA of the regulated sites") # + geom_text(size = 4)
+```
+================================================================================
+
+# Functional analysis
+
+I find from PhosphoSitePlus the putative kinases responsible for the phosphorylation sites regulations.
+
+```{r}
+load(file = "RData/DBMapping/PsitePlus.RData")
+temp <- sapply(export$psiteID, function(x) {
+    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusAll[1]
+  })
+export$PsitePlusIDMultiSpecies <- temp
+names(tabK)[names(tabK) == "ALL_SITEGPID"] <- "PsitePlusIDMultiSpecies"
+tabK <- tabK[tabK$KIN_ORGANISM %in% c("human", "mouse", "rat"),]
+tabK <- tabK[order(tabK$KIN_ORGANISM),]
+mer <- merge(export, tabK, by = "PsitePlusIDMultiSpecies", all = T)
+mer <- mer[!is.na(mer$psiteID),]
+
+temp <- sapply(gtab$ID, function(x) {
+  paste(unique(mer$KINASE[as.character(mer$psiteID) == x]), collapse = "|")
+})
+gtab$Kinase <- temp
+```
+
+I plot the PCAs with tthe names of all the kinases that are found regulating the sites:
+
+```{r}
+kinases <- unique(
+  unlist(
+    sapply(gtab$ID, function(x) {
+      unique(mer$KINASE[as.character(mer$psiteID) == x])
+    })
+  )
+)
+kinases <- sort(kinases)
+
+pdf("Figures/PCAKinases.pdf", useDingbats=FALSE, 9, 8)
+for (el in kinases) {
+  gtab$labels <- gtab$GeneID
+  gtab$labels[!grepl(el, gtab$Kinase)] <- ""
+  g <- ggplot(gtab, aes(x = x, y = y, col = factor(Cluster), label = labels)) + geom_point(alpha = 0.3, size = 3) + scale_color_manual(values = colourClus) + theme_bw() + labs(title = "PCA of the regulated sites", subtitle = el)  + geom_text(size = 4, fontface = "bold")
+  print(g)
+}
+dev.off()
+```
+
+I plot the plots of the PCA with the kinase substrates in the document "Figures/PCAKinases.pdf".
+
+```{r}
+temp <- gtab[,c(3,7)]
+temp <- temp[temp$Kinase != "NA",]
+temp <- temp[!duplicated(temp),]
+write.table(temp, "SupTables/PhosphoSitePlusMapping.txt", sep = "\t", row.names = F, quote = F)
+```
+
+================================================================================
+
+```{r SessionInfo, echo=FALSE}
+sessionInfo()
+``` 

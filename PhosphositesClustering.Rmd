@@ -6,16 +6,16 @@ output: html_document
 ---
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-knitr::opts_chunk(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE)
 
 library(ggplot2)
 library(ggrepel)
 library(reshape2)
 library(gplots)
 library(knitr)
-library(ggdendro)
 library(clusterProfiler)
 library(RColorBrewer)
+library("viridis")
 
 library(Rmisc) # multiplot()
 ```
@@ -155,9 +155,6 @@ dev.off()
 
 # Figure with number of regulated phosphorylation site per time point
 
-Table of total regulated phosphorylation sites:
-`r kable(sapply(ltab, function(x) table(x$Regulation)))`
-
 ```{r}
 mat <- export[!is.na(export$Regulation) & export$Regulation=="TRUE",grepl(".T0", names(export), fixed = T) & !grepl(".FC", names(export), fixed = T)]
 matFC <- export[!is.na(export$Regulation) & export$Regulation=="TRUE",grepl(".T0.FC", names(export), fixed = T)]
@@ -292,7 +289,7 @@ dev.off()
 
 Using tight clustering, I test several number of clusters:
 
-```{r, echo = F}
+```{r}
 regulatedhits <- unique(as.character(export$psiteID[export$Regulation=="TRUE"]))
 regulatedhits <- regulatedhits[!is.na(regulatedhits)]
 l <- list()
@@ -325,9 +322,10 @@ clusmat <- rbind(l[[1]], l[[2]])
 keepcm <- clusmat
 clusmat <- t(scale(t(clusmat))) # scale the data set.
 clusmat <- clusmat[row.names(clusmat) %in% regulatedhits,]
+```
 
-
-
+```{r, eval = F}
+set.seed(300)
 par(mfrow=c(5,4))
 for (i in 9) {
         print(paste0("Number of clusters: ", i))
@@ -341,6 +339,11 @@ for (i in 9) {
         print(table(clusres$cluster))
 }
 
+save(clusres, file = "RData/10_Clusters.Rdata")
+```
+
+```{r}
+load(file = "RData/10_Clusters.Rdata")
 ```
 
 Graphical representation of the different clusters with real values:
@@ -513,391 +516,80 @@ print(g4)
 dev.off()
 ```
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+**Phospho-tyrosines are over-represented in the clusters 1 and 6.**
+
 ## Graphical representation
 
 I create a tile map with the replicate values per cluster.
 
-I plot PCA of the phosphosites in the different clusters, using mean data per biological replicate.
 
 ```{r, echo=FALSE, eval = T, warning=F}
-for (j in 1:2) {
-        if (j == 1) {cols <- c(246, 252, 258, 264, 247, 253, 259, 265, 248, 254, 260, 266, 249, 255, 261, 267, 250, 256, 262, 268, 251, 257, 263, 269, 1); sep <- c(4, 8, 12, 16, 20)}
-        if (j == 2) {cols <- c(132, 138, 144, 133, 139, 145, 134, 140, 146, 135, 141, 147, 136, 142, 148, 137, 143, 149, 1); sep <- c(3, 6, 9, 12, 15)}
-        tab <- ltab[[j]]
-        tab <- tab[!is.na(tab$ClusterMerged),]
-        ti <- names(ltab)[j]
-        ref <- unique(tab$ClusterMerged)[!is.na(unique(tab$ClusterMerged))]
-        ref <- ref[ref!=-1]
-        for (i in 1:length(ref)) {
-                el <- ref[i]
-                hm <- as.matrix(tab[tab$ClusterMerged==el,cols])
-                k <- sapply(1:nrow(hm), function(x) length(hm[x,][!is.na(hm[x,])]))
-                k <- k>1
-                hm <- hm[k,]
-                if (class(hm) %in% c("matrix")) {
-                        if (nrow(hm)>2){
-                        na <- hm[,ncol(hm)]
-                        hm <- apply(hm[,1:(ncol(hm)-1)], 2, as.character)
-                        hm <- apply(hm, 2, as.numeric)
-                        dimnames(hm)[[1]] <- na
-                        #hm <- hm[complete.cases(hm),]
-                        hm <- hm[!duplicated(hm),]
-                        ord <- rowMeans(hm, na.rm = T)
+load("RData/DBMapping/MappingPhospho_02.Rdata")
 
-                        # heatmap.2(hm[order(ord),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", names(lclus)[i]), col=colfuncdark(100), tracecol="black", cexCol = 0.9, scale = "none", trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1, na.color = "grey", na.rm = T, Rowv = F)
-                        na <- paste0("Figures_V3/TileMap_Means_Cluster", "_", ti, el, "_LogMerged_M2.pdf")
-                        pdf(na, useDingbats=FALSE, 8.27, 11.69)
-                        heatmap.2(hm[order(ord),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites\nin the cluster", el, " ", ti), col=colfuncdarkpos(100), tracecol="black", cexCol = 0.9, scale = "none", trace = "none", Colv = F, cexRow = 0.45, colsep = sep, keysize = 1, na.color = "grey", na.rm = T, Rowv = F)
-                        dev.off()
-                        na <- paste0("Figures_V3/TileMap_Means_Cluster", "_", ti, el, "_LogMerged_M2.jpg")
-                        jpeg(na, 8.27, 11.69, units = "in", res = 300) # width and height in inches.
-                        heatmap.2(hm[order(ord),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites\nin the cluster", el, " ", ti), col=colfuncdarkpos(100), tracecol="black", cexCol = 0.9, scale = "none", trace = "none", Colv = F, cexRow = 0.45, colsep = sep, keysize = 1, na.color = "grey", na.rm = T, Rowv = F)
-                        dev.off()}
-                }
-        }
-}
-```
-
-The tile maps are saved in `Figures_V3/` as `ScaledTileMap_Means_Cluster...`. 
-
-
-# Analysis per cluster
-
-I create lists of phosphorylation sites in each cluster.
-
-## Amino-acid composition
-
-```{r, echo = F, eval = T}
-ti <- "Amino acid composition"
-lclus <- list()
-for (i in 1:length(unique(taball$ClusterMerged)[!is.na(unique(taball$ClusterMerged))])) {
-        el <- unique(taball$ClusterMerged)[!is.na(unique(taball$ClusterMerged))][i]
-        lclus[[length(lclus)+1]] <- unique(as.character(taball$psiteID[taball$ClusterMerged==el]))[!is.na(unique(as.character(taball$psiteID[taball$ClusterMerged==el])))]
-        names(lclus)[length(lclus)] <- el
-}
-
-laa <- lapply(lclus, function(x) sapply(x, function(y) strsplit(y, "-", fixed = T)[[1]][2]))
-laa <- lapply(laa, substr, 0, 1)
-aa <- sapply(laa, table)
-aa <- lapply(aa, as.data.frame)
-
-lg <- list()
-for (i in 1:length(aa)) {
-        tab <- aa[[i]]
-        lg[[length(lg)+1]] <- ggplot(tab, aes(x = "", y = Freq, fill = Var1)) + geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle(paste0("Amino-acid composition of cluster ", names(aa)[i])) + scale_fill_manual(values = mlpcolours[4:6]) + theme_minimal()
-        print(unique(taball$ClusterMerged)[!is.na(unique(taball$ClusterMerged))][i])
-        print(kable(tab))
-}
-
-#multiplot(plotlist = lg, cols = 2)
-
-na <- paste0("Figures_V3/ScaledaaClusters_LogMerged_M2.pdf")
-pdf(na, useDingbats=FALSE, 8.27, 11.69)
-print(multiplot(plotlist = lg, cols = 2))
-dev.off()
-na <- paste0("Figures_V3/ScaledaaClusters_LogMerged_M2.jpg")
-jpeg(na, 8.27, 11.69, units = "in", res = 300) # width and height in inches.
-print(multiplot(plotlist = lg, cols = 2))
-dev.off()
-```
-
-![](Figures_V3/ScaledaaClusters_LogMerged_M2.jpg)
-
-# Creation of an annotated table for export
-
-```{r, echo = F}
-for (i in 1:2) {
-  temp <- ltab[[i]]
-  acc <- temp[,grepl("eading", names(temp), fixed = T)]
-  acc <- apply(acc, 2, as.character)
-  temp$Accession <- as.character(acc[,1])
-  for (j in 2:ncol(acc)) {
-    temp$Accession[is.na(temp$Accession)] <- acc[is.na(temp$Accession),j]
-  }
-  if (i==1) {
-    gene <- temp[,grepl("ene", names(temp), fixed = T)]
-    gene <- apply(gene, 2, as.character)
-    temp$Gene <- as.character(gene[,1])
-    for (j in 2:ncol(gene)) {
-      temp$Gene[is.na(temp$Gene)] <- gene[is.na(temp$Gene),j]
-    }
+tab <- export[,grepl("MeanLoops", names(export))]
+row.names(tab) <- export$psiteID
+tab$ClusterMerged <- export$ClusterMerged
+tab <- tab[!is.na(tab$ClusterMerged),]
+ref <- unique(tab$ClusterMerged)[!is.na(unique(tab$ClusterMerged))]
+# ref <- ref[ref!=-1]
+for (i in 1:length(ref)) {
+  el <- ref[i]
+  hm <- as.matrix(tab[tab$ClusterMerged==el,1:(ncol(tab)-1)])
+  # Combine the pY and the TiO2 data:
+  pY <- hm[,grepl("pTyr", colnames(hm))]
+  na <- row.names(pY)[sapply(seq_len(nrow(pY)), function(x) {length(pY[x,][!is.na(pY[x,])]) > 0})]
+  pY <- pY[sapply(seq_len(nrow(pY)), function(x) {length(pY[x,][!is.na(pY[x,])]) > 0}),]
+  TiO2 <- hm[,grepl("TiO2", colnames(hm))]
+  TiO2 <- TiO2[sapply(seq_len(nrow(TiO2)), function(x) {length(TiO2[x,][!is.na(TiO2[x,])]) > 0}),]
+  colnames(TiO2) <- gsub("_TiO2", "", colnames(TiO2), fixed = T)
+  if (class(pY) == "numeric") {
+    names(pY) <- gsub("_pTyr", "", names(pY), fixed = T)
+    pY <- pY[order(names(pY))]
+    TiO2 <- TiO2[,order(colnames(TiO2))]
+    pY <- c(pY[1:6], rep(NA, 6), pY[7:18])
+    names(pY) <- colnames(TiO2)
+    hm <- rbind(pY, TiO2)
+    row.names(hm)[1] <- na
+  } else if  (nrow(pY) > 1) {
+    colnames(pY) <- gsub("_pTyr", "", colnames(pY), fixed = T)
+    pY <- pY[,order(colnames(pY))]
+    TiO2 <- TiO2[,order(colnames(TiO2))]
+    pY <- cbind(pY[,1:6], matrix(NA, ncol = 6, nrow = nrow(pY)), pY[,7:18])
+    colnames(pY) <- colnames(TiO2)
+    hm <- rbind(pY, TiO2)
   } else {
-    gene <- temp[,grepl("asta", names(temp), fixed = T)]
-    for (j in 1:ncol(gene)) {
-      vec <- as.character(gene[,j])
-      vec <- sapply(vec, function(x){strsplit(x, "GN=")[[1]][2]})
-      vec <- sapply(vec, function(x){strsplit(x, " ")[[1]][1]})
-      gene[,j] <- vec
-    }
-    gene <- cbind(temp[,grepl("ene", names(temp), fixed = T)], gene)
-    gene <- apply(gene, 2, as.character)
-    temp$Gene <- as.character(gene[,1])
-    for (j in 2:ncol(gene)) {
-      temp$Gene[is.na(temp$Gene)] <- gene[is.na(temp$Gene),j]
-    }
+    colnames(pY) <- gsub("_pTyr", "", colnames(pY), fixed = T)
+    pY <- pY[,order(colnames(pY))]
+    TiO2 <- TiO2[,order(colnames(TiO2))]
+    hm <- TiO2
   }
-  sw <- temp[,grepl("indow", names(temp), fixed = T)]
-  sw <- apply(sw, 2, as.character)
-  temp$Sequence.Window <- as.character(sw[,1])
-  for (j in 2:ncol(sw)) {
-    temp$Sequence.Window[is.na(temp$Sequence.Window)] <- sw[is.na(temp$Sequence.Window),j]
-  }
-  ltab[[i]] <- temp
-}
-temp1 <- merge(subset(taball, taball$type=="TiO2"), ltab[[1]][,c(1,308:309)], by = "psiteID", all = F)
-temp2 <- merge(subset(taball, taball$type=="pY-IP"), ltab[[2]][,c(1,188:189)], by = "psiteID", all = F)
-temp <- rbind(temp1, temp2)
-temp$AminoAcid <- ifelse(grepl("-Y", as.character(temp$psiteID), fixed = T), "Tyrosine", "Serine")
-temp$AminoAcid[grepl("-T", as.character(temp$psiteID), fixed = T)] <- "Threonine"
-names(temp)[c(7:9)] <- c("Regulated", "Data set", "Cluster")
-temp <- temp[,c(1,7:ncol(temp))]
-write.table(temp, "SupTables/SupTablepSites.txt", sep = "\t", row.names = F)
-```
-
-# Update on the persistence of regulation
-
-```{r, echo = F}
-mat <- keepPersistence
-vec <- temp$Cluster[match(rownames(mat), temp$psiteID)]
-
-for (i in 1:nrow(mat)) {
-  mat[i,mat[i,]!=0] <- vec[i]
-}
-
-mat[mat==0] <- -10
-mat <- mat[order(mat[,1], mat[,2], mat[,3], mat[,4], mat[,5], decreasing = T),]
-
-for (i in 1:length(unique(vec))) {
-  mattemp <- mat[sapply(1:nrow(mat), function(x){sort(unique(mat[x,]))[2]})==unique(vec)[i],]
-  na <- paste0("Figures_V3/RegulatedAcrossTimeCluster", unique(vec)[i], ".pdf")
-  mattemp <- mattemp[order(mattemp[,1], mattemp[,2], mattemp[,3], mattemp[,4], mattemp[,5], decreasing = T),]
-  mattemp <- mattemp[!is.na(mattemp[,1]),]
-  if (unique(vec)[i]==-1) {mattemp[mattemp==-1] <- 10}
+  #
+  row.names(hm) <- sapply(row.names(hm), function(x) {
+    psiteInfo[[which(names(psiteInfo) == x)]]$GeneID
+  })
+  colnames(hm) <- gsub("MeanLoops_", "", colnames(hm), fixed = T)
+  ord <- gsub("R[12354]_S", "", colnames(hm))
+  ord <- gsub("R[12354]_", "", ord)
+  ord <- gsub(".", "", ord, fixed = T)
+  ord <- gsub("NS", "0", ord, fixed = T)
+  ord <- as.numeric(ord)
+  hm <- hm[,order(ord)]
+  ord <- rowMeans(hm, na.rm = T)
+  
+  heatmap.2(hm[order(ord, decreasing = T),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=viridis(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
+  na <- paste0("Figures/TileMap_Means_Cluster", "_", el, ".pdf")
   pdf(na, useDingbats=FALSE, 8.27, 11.69)
-  heatmap.2(mattemp, trace = "none", cexRow = 0.5, col = c("white","black"), Rowv=FALSE, Colv=FALSE, rowsep = 1:nrow(mattemp))
+  heatmap.2(hm[order(ord, decreasing = T),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=viridis(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
   dev.off()
 }
 
-pdf("Figures_V3/RegulatedAcrossTimeClusters.pdf", useDingbats=FALSE, 8.27, 11.69)
-heatmap.2(mat, trace = "none", cexRow = 0.1, col = c("white",mlpcolours), keysize = 1, Rowv=FALSE, Colv=FALSE)
-dev.off()
-
-colourClus <- c("black", "#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2")
-
-gtab <- melt(mat)
-require(dplyr)
-gtab$value <- as.character(gtab$value)
-gtab$Var2 <- as.character(gtab$Var2)
-gtab$Var1 <- as.character(gtab$Var1)
-gtab <- as.data.frame(summarise(group_by(gtab, value, Var2), length(Var1)))
-head(gtab)
-names(gtab)[3] <- "y"
-gtab$value[gtab$value==-10] <- NA
-gtab <- gtab[!is.na(gtab$value),]
-gtab$Var2 <- factor(as.character(gtab$Var2), levels = sort(unique(gtab$Var2))[c(2,3,1,4,5)])
-ggplot(gtab, aes(x = Var2, fill = value, y = y)) + geom_bar(col = "black", stat = "identity", position = "stack") + facet_wrap(~value, scales = "free_y") + scale_fill_manual(values = colourClus) + theme_minimal()
-ggplot(gtab, aes(x = Var2, fill = value, y = y)) + geom_bar(col = "black", stat = "identity", position = "stack") + facet_wrap(~value) + scale_fill_manual(values = colourClus) + theme_minimal()
-
-pdf("Figures_V3/RegulatedAcrossTimeClustersBarplot.pdf", useDingbats=FALSE, 11.69, 8.27)
-ggplot(gtab, aes(x = Var2, fill = value, y = y)) + geom_bar(col = "black", stat = "identity", position = "stack") + facet_wrap(~value, scales = "free_y") + scale_fill_manual(values = colourClus) + theme_minimal() + ylab("Number of significantly regulated sites")
-dev.off()
 ```
 
-# ProteomeScout analysis
+The tile maps(row-wise scaling) are saved in `Figures/` as `ScaledTileMap_Means_Cluster...`. 
 
-I work with [ProteomeScout](https://proteomescout.wustl.edu).
-
-After retrieving information from the ProteomeScout website (30/09/2016). The phosphorylation database is dated of Sun Sep 25 16:28:51 2016.
-
-```{r, eval = T}
-annotations <- read.table("ProteomeScout/AnnotationsPS_20160930.tsv", sep = "\t", header = T)
-annotations$mapping <- paste0(annotations$query_accession, "_", annotations$peptide)
-vec <- sapply(ltab[[1]]$Accession, function(x){strsplit(x, "|", fixed = T)[[1]]})
-vec <- lapply(vec, function(x){x[nchar(x)==6]})
-vec <- sapply(vec, paste, collapse = "|")
-ltab[[1]]$Accession2 <- vec
-vec <- sapply(ltab[[2]]$Accession, function(x){strsplit(x, "|", fixed = T)[[1]]})
-vec <- lapply(vec, function(x){x[nchar(x)==6]})
-vec <- sapply(vec, paste, collapse = "|")
-ltab[[2]]$Accession2 <- vec
-
-ltab[[1]]$mapping <- paste0(ltab[[1]]$Accession2, "_", sapply(as.character(ltab[[1]]$psiteID), function(x){strsplit(x, "-", fixed = T)[[1]][2]}))
-ltab[[1]]$mapping <- sapply(ltab[[1]]$mapping, function(x){strsplit(x, "|", fixed = T)[[1]][1]})
-ltab[[2]]$mapping <- paste0(ltab[[2]]$Accession2, "_", sapply(as.character(ltab[[2]]$psiteID), function(x){strsplit(x, "-", fixed = T)[[1]][2]}))
-ltab[[2]]$mapping <- sapply(ltab[[2]]$mapping, function(x){strsplit(x, "|", fixed = T)[[1]][1]})
-
-keep <- ltab
-for (i in 1:2) {
-        tab <- ltab[[i]]
-        tab <- merge(tab, annotations, by = "mapping", all = T)
-        ltab[[i]] <- tab
-}
-
-ltab[[2]] <- ltab[[2]][grepl("-Y", ltab[[2]]$psiteID),]
-
-save(list = c("ltab"), file = "annotatedTables.Rdata")
+```{r}
+save(export, file = "RData/11_TableClusters.RData")
 ```
-
-Dimensions of the annotated tables:
-
-`r kable(sapply(ltab[1:2], dim))`
-
-```{r, eval = T}
-load(file = "annotatedTables.Rdata")
-taban <- rbind(ltab[[1]][,c("psiteID", "gene_site", "scansite_bind", "scansite_kinase",  "site_pfam_domains", "site_uniprot_domains", "site_kinase_loop", "site_macro_molecular", "site_topological", "site_structure", "protein_GO_BP", "protein_GO_CC", "protein_GO_MF","Regulation", "ClusterMerged")], ltab[[2]][,c("psiteID", "gene_site", "scansite_bind", "scansite_kinase",  "site_pfam_domains", "site_uniprot_domains", "site_kinase_loop", "site_macro_molecular", "site_topological", "site_structure", "protein_GO_BP", "protein_GO_CC", "protein_GO_MF","Regulation", "ClusterMerged")])
-taban <- taban[!is.na(taban$gene_site),]
-taban$ClusterMerged[is.na(taban$ClusterMerged)] <- "not regulated"
-taban$ClusterMerged[taban$ClusterMerged==-1] <- "no defined cluster"
-
-# I split the table per cluster:
-
-lan <- list()
-for (el in unique(taban$ClusterMerged)) {
-        lan[[length(lan)+1]] <- subset(taban, taban$ClusterMerged==el)
-        names(lan)[length(lan)] <- el
-}
-
-lan2 <- list()
-for (i in 1:length(lan)) {
-        tab <- lan[[i]]
-        tab <- tab[!duplicated(tab),]
-        ti <- names(lan)[i]
-        for (category in c("scansite_bind", "scansite_kinase")){
-                mapping <- tab[,c("gene_site", category)]
-                vec <- as.character(mapping[,2])
-                vec <- sapply(vec, function(x){strsplit(x, "; ", fixed = T)})
-                vec <- as.character(unlist(vec))
-                vec <- sapply(vec, function(x){strsplit(x, " (", fixed = T)[[1]][1]})
-                vec <- as.character(vec)
-                tabvec <- table(vec)
-                na <- category
-                mat <- data.frame("Cluster"=rep(ti, length(tabvec)), "temp" = names(tabvec), "number" = as.numeric(tabvec))
-                names(mat)[2] <- category
-                vec3 <- vector(length = nrow(mat))
-                for (j in 1:nrow(mat)) {
-                        el <- as.character(mat[,2])[j]
-                        vec2 <- unique(as.character(mapping[grepl(el, mapping[,2]),1]))
-                        val <- paste(vec2, collapse = ";")
-                        vec3[j] <- val
-                }
-                mat$Substrates <- vec3
-                lan2[[length(lan2)+1]] <- mat
-                names(lan2)[length(lan2)] <- paste0(names(lan)[i], " ", category)
-        }
-}
-
-vec <- names(lan2)[grepl("_kinase", names(lan2))]
-Kin <- rbind(lan2[[vec[1]]], lan2[[vec[2]]])
-for (i in 3:length(vec)) {
-        Kin <- rbind(Kin, lan2[[vec[i]]])
-}
-
-Kin$Cluster <- factor(as.character(Kin$Cluster), levels = as.character(unique(Kin$Cluster))[c(2,7,5,10,9,8,6,3,1,4)])
-gtab <- Kin[Kin$Cluster!="not regulated",]
-gtab <- gtab[!is.na(gtab$Cluster),]
-hm <- dcast(Kin[,1:(ncol(Kin)-1)], Cluster ~ scansite_kinase)
-hm2 <- as.matrix(hm[,2:ncol(hm)])
-row.names(hm2) <- hm[,1]
-d <- dist(t(hm2))
-fit <- hclust(d)
-plot(fit)
-gtab$scansite_kinase <- factor(as.character(gtab$scansite_kinase), levels = fit$labels[fit$order])
-gtab$Cluster <- factor(as.character(gtab$Cluster), levels = unique(as.character(gtab$Cluster))[c(3,1,5,4,8,6,9,2,7)])
-gtab$Cluster <- factor(as.character(gtab$Cluster), levels = as.character(unique(gtab$Cluster))[c(1,6,4,9,8,7,5,2,3)])
-
-g <- ggplot(gtab, aes(x=Cluster, y = scansite_kinase, size = number, col = number)) + geom_point() + scale_colour_gradient(high="darkred", low="orange") + theme_bw() + ggtitle("Putative kinases from Scansite")
-print(g)
-write.table(gtab, "OutputTables/Kinases.txt", sep = "\t", row.names = F)
-
-na <- paste0("Figures_V3/Kinases.pdf")
-pdf(na, useDingbats=FALSE, 11.69, 8.27)
-print(g)
-dev.off()
-
-
-vec <- names(lan2)[grepl("_bind", names(lan2))]
-Bind <- rbind(lan2[[vec[1]]], lan2[[vec[2]]])
-for (i in 3:length(vec)) {
-        Bind <- rbind(Bind, lan2[[vec[i]]])
-}
-
-Bind$Cluster <- factor(as.character(Bind$Cluster), levels = as.character(unique(Bind$Cluster))[c(2,3,6,10,8,7,4,9,5)])
-gtab <- Bind[Bind$Cluster!="not regulated",]
-gtab <- gtab[!is.na(gtab$Cluster),]
-hm <- dcast(Bind[,1:(ncol(Bind)-1)], Cluster ~ scansite_bind)
-hm2 <- as.matrix(hm[,2:ncol(hm)])
-row.names(hm2) <- hm[,1]
-d <- dist(t(hm2))
-fit <- hclust(d)
-plot(fit)
-gtab$scansite_bind <- factor(as.character(gtab$scansite_bind), levels = fit$labels[fit$order])
-gtab$Cluster <- factor(as.character(gtab$Cluster), levels = unique(as.character(gtab$Cluster))[c(1,6,4,9,8,7,5,2,3)])
-
-g <- ggplot(gtab, aes(x=Cluster, y = scansite_bind, size = number, col = number)) + geom_point() + scale_colour_gradient(high="darkred", low="orange") + theme_bw() + ggtitle("Putative Binding site from ProteomeScout")
-print(g)
-write.table(gtab, "OutputTables/Binding.txt", sep = "\t", row.names = F)
-
-na <- paste0("Figures_V3/Binding.pdf")
-pdf(na, useDingbats=FALSE, 11.69, 8.27)
-print(g)
-dev.off()
-```
-
-I subset the annotated table per cluster. The dimentions of the tables are: `r kable(sapply(lan, dim))`.
-
-# Impact of protein relative quantity to the intensity of the quantified phosphorylation sites
-
-Here, I want to have a feel for how much the quantity of a protein impacts our ability to measure a phospho-regulation on this protein.
-
-```{r, echo = F, warning=FALSE, eval = T}
-tab1 <- ltab[[1]]; tab2 <- ltab[[2]]
-tab1$psiteID2 <- paste0("TiO2-", tab1$psiteID)
-tab2$psiteID2 <- paste0("pY-", tab2$psiteID)
-tab3 <- cbind(tab2[,c(1,2,182, 133:138)], matrix(NA, ncol = 6, nrow = nrow(tab2)), tab2[,c(139:150)])
-names(tab3) <- names(tab1[,c(1,2,302, 247:270)])
-phostab <- rbind(tab1[,c(1,2,302, 247:270)], tab3)
-phostab$Means <- rowMeans(phostab[,c(4:ncol(phostab))], na.rm = T)
-matching <- as.character(phostab$psiteID)
-phostab$Max <- sapply(1:nrow(phostab), function(x){max(as.numeric(phostab[x,c(4:ncol(phostab))]), na.rm = T)})
-matching <- sapply(matching, function(x) strsplit(x, "-", fixed = T)[[1]][1])
-phostab$Min <- sapply(1:nrow(phostab), function(x){min(as.numeric(phostab[x,c(4:ncol(phostab))]), na.rm = T)})
-matching <- sapply(matching, function(x) strsplit(x, "-", fixed = T)[[1]][1])
-phostab$Amplitude <- phostab$Max - phostab$Min
-matchingProt <- as.character(Prottab$Majority.protein.IDs)
-matchingProt <- sapply(matchingProt, function(x) strsplit(x, "|", fixed = T)[[1]][3])
-matchingProt <- sapply(matchingProt, function(x) strsplit(x, "_", fixed = T)[[1]][1])
-lg <- list()
-for (el in names(phostab)[28:ncol(phostab)]) {
-        df <- data.frame("psite" = as.character(phostab$psiteID), "y" = phostab[,el], "x" = log2(Prottab[match(matching, matchingProt),"iBAQ"]))
-        g <- ggplot(df, aes(x = x, y = y)) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + geom_point(alpha = 0.6) + theme_minimal() + ggtitle(el) + ylab("log2-transformed phosphorylation site value") + xlab("log2-transformed iBAQ protein")
-        print(g)
-        lg[[length(lg)+1]] <- g +  theme(legend.position="none")
-}
-
-na <- paste0("Figures_V3/PsitesVsProtiBAQ.pdf")
-pdf(na, useDingbats=FALSE, 8.27, 11.69)
-for (i in 1:length(lg)) {
-  print(lg[[i]])
-}
-dev.off()
-
-for (el in names(phostab)[28:ncol(phostab)]) {
-        df <- data.frame("psite" = as.character(phostab$psiteID), "y" = phostab[,el], "x" = log2(Prottab[match(matching, matchingProt),"Intensity"]))
-        g <- ggplot(df, aes(x = x, y = y)) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + geom_point(alpha = 0.6) + theme_minimal() + ggtitle(el) + ylab("log2-transformed phosphorylation site value") + xlab("log2-transformed intensity protein")
-        print(g)
-        lg[[length(lg)+1]] <- g +  theme(legend.position="none")
-}
-
-na <- paste0("Figures_V3/PsitesVsProtIntensity.pdf")
-pdf(na, useDingbats=FALSE, 8.27, 11.69)
-for (i in 1:length(lg)) {
-  print(lg[[i]])
-}
-dev.off()
-
-```
-
 
 ```{r, echo = F}
 sessionInfo()

@@ -32,4 +32,6 @@ The data was prepared and normalised with the scripts in "DataPreparation.Rmd/ht
 
 The scripts used for the statistical testing of the data (including kinetics normalisation and replacement of missing values) are in the folder `StatisticalAnalysis`. IT CONTAINS THE MANUAL CORRECTION OF SEVERAL NAMING ISSUES IN THE ORIGINAL TABLES.
 
-The clustering of the phosphorylation sites is performed in the document "PhoshositesClustering".
+The clustering of the phosphorylation sites is performed in the document `PhoshositesClustering`. I chose to perform tight clustering on the mean values of the loops. I scaled the kinetics (row-wise).
+
+I made a PCA plot of the regulated phosphorylation sites in the `PCA` document
