@@ -1,0 +1,14 @@
+
+
+
+
+
+Analysis Type:	PANTHER Overrepresentation Test (Released 20171205)
+Annotation Version and Release Date:	PANTHER version 13.1 Released 2018-02-03
+Analyzed List:	Client Text Box Input (Mus musculus)
+Reference List:	Background02.txt (Mus musculus)
+Test Type:	FISHER
+PANTHER Pathways	Background02.txt - REFLIST (2114)	Client Text Box Input (38)	Client Text Box Input (expected)	Client Text Box Input (over/under)	Client Text Box Input (fold Enrichment)	Client Text Box Input (raw P-value)	Client Text Box Input (FDR)
+EGF receptor signaling pathway (P00018)	39	6	.70	+	8.56	9.93E-05	1.10E-02
+Angiogenesis (P00005)	41	5	.74	+	6.78	1.06E-03	3.92E-02
+PDGF signaling pathway (P00047)	51	6	.92	+	6.54	3.79E-04	2.10E-02

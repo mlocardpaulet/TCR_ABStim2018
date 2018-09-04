@@ -1,0 +1,4 @@
+ID	Source	Description	enrichment ratio	p value	p Bonferroni	p Holm	p Sidak	FDR
+GO:0040017	Biological Process	positive regulation of locomotion	7.62208067941	7.48e-06	0.0112	0.01118	0.01092	0.006	
+GO:0044428	Cellular Component	nuclear part	0.291585445094	5.901e-07	0.0008834	0.0008834	0.0008611	0	
+GO:0003676	Molecular Function	nucleic acid binding	0.281789638932	3.243e-06	0.004855	0.004852	0.004733	0	

@@ -1,0 +1,26 @@
+ID	Source	Description	enrichment ratio	p value	p Bonferroni	p Holm	p Sidak	FDR
+GO:0030027	Cellular Component	lamellipodium	6.02096436059	4.401e-05	0.07336	0.0724	0.07152	0.044	
+GO:0007264	Biological Process	small GTPase mediated signal transduction	5.90946502058	5.03e-05	0.08385	0.08269	0.08174	0.048	
+GO:0006897	Biological Process	endocytosis	5.25365853659	4.147e-05	0.06913	0.0683	0.06739	0.034	
+GO:0016023	Cellular Component	cytoplasmic membrane-bounded vesicle	4.8252688172	3.091e-05	0.05152	0.05103	0.05023	0.032	
+GO:0005096	Molecular Function	GTPase activator activity	4.34433443344	3.145e-05	0.05242	0.05189	0.0511	0.032	
+GO:0043547	Biological Process	positive regulation of GTPase activity	4.31584699454	3.342e-05	0.05571	0.05511	0.05431	0.032	
+GO:0030695	Molecular Function	GTPase regulator activity	4.20553780618	4.242e-05	0.07072	0.06983	0.06893	0.034	
+GO:0008047	Molecular Function	enzyme activator activity	4.18189964158	8.046e-06	0.01341	0.01332	0.01308	0.012	
+GO:0060589	Molecular Function	nucleoside-triphosphatase regulator activity	4.12643678161	5.048e-05	0.08415	0.08294	0.08203	0.048	
+GO:0043085	Biological Process	positive regulation of catalytic activity	3.10822510823	7.11e-06	0.01185	0.01178	0.01155	0.012	
+GO:0007165	Biological Process	signal transduction	2.07857733664	2.824e-05	0.04708	0.04666	0.04589	0.026	
+GO:1901363	Molecular Function	heterocyclic compound binding	0.47311544544	2.124e-05	0.03541	0.03511	0.03452	0.024	
+GO:0097159	Molecular Function	organic cyclic compound binding	0.471499868663	2.076e-05	0.03461	0.03434	0.03374	0.024	
+GO:0043170	Biological Process	macromolecule metabolic process	0.463695912907	3.943e-05	0.06573	0.06498	0.06407	0.032	
+GO:0005634	Cellular Component	nucleus	0.320535714286	3.413e-07	0.000569	0.0005683	0.0005547	0	
+GO:0003676	Molecular Function	nucleic acid binding	0.262921113204	1.135e-07	0.0001892	0.0001891	0.0001844	0	
+GO:0006139	Biological Process	nucleobase-containing compound metabolic process	0.254609929078	7.686e-07	0.001281	0.001275	0.001249	0	
+GO:0006725	Biological Process	cellular aromatic compound metabolic process	0.254159292035	7.582e-07	0.001264	0.001259	0.001232	0	
+GO:0046483	Biological Process	heterocycle metabolic process	0.253889674682	7.531e-07	0.001255	0.001251	0.001224	0	
+GO:1901360	Biological Process	organic cyclic compound metabolic process	0.251929824561	7.384e-07	0.001231	0.001227	0.0012	0	
+GO:0034641	Biological Process	cellular nitrogen compound metabolic process	0.249565519639	4.05e-07	0.0006751	0.0006735	0.0006581	0	
+GO:0006807	Biological Process	nitrogen compound metabolic process	0.248528902735	3.899e-07	0.00065	0.0006489	0.0006336	0	
+GO:0016070	Biological Process	RNA metabolic process	0.197469746975	1.335e-06	0.002226	0.002214	0.00217	0.002	
+GO:0090304	Biological Process	nucleic acid metabolic process	0.175915717261	5.165e-08	8.61e-05	8.61e-05	8.393e-05	0	
+GO:0003677	Molecular Function	DNA binding	0.0746051537822	1.153e-05	0.01921	0.01908	0.01873	0.014	

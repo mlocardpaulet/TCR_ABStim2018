@@ -25,6 +25,15 @@ Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 - "05_ParsedTablesNormPSP.RData": Data normalised for technical instrument variation using the intensities of the iRT. Also, I removed some runs that overperformed. 
 - "06_Prottab.RData": Protein data (raw).
 
+`"KEAEnrichments"` contains the results of phosphorylation site specific enrichment using [KEA](http://www.maayanlab.net/KEA2/#) the 4th September 2018 (no background). I saved the enrichment results with the following labels:
+- "KS" for Literature Based Kinase-Substrate Library with Phosphosites, followed by the cluster number.
+- "BT" for Biological Terms Associated with Phosphosites from Literature Mining, followed by the cluster number.
+- "AllReg" is when I used all the regulated sites as input.
+- "Background" is when I used all the sites identified in the data set.
+
+`"PANTHER"` contains the results of GO term enrichments based on the gene names using [Panther](http://pantherdb.org/) the 4th September 2018. I used the detected sites as background.
+
+`"Phomics"` contains the results of GO term enrichments based on the phosphorylation sites using [Phomics](http://phomics.jensenlab.org/phospho_enrichment_uniprot) the 4th September 2018. I used the detected sites as background.
 
 ## Data analysis:
 

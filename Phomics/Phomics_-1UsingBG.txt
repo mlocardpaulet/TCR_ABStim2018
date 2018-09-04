@@ -1,0 +1,8 @@
+ID	Source	Description	enrichment ratio	p value	p Bonferroni	p Holm	p Sidak	FDR
+GO:0048016	Biological Process	inositol phosphate-mediated signaling	13.230958231	4.564e-06	0.009606	0.009606	0.009364	0.008	
+GO:0005262	Molecular Function	calcium channel activity	13.1598240469	3.077e-05	0.06477	0.06474	0.06314	0.038	
+GO:0055002	Biological Process	striated muscle cell development	12.7485795455	3.612e-05	0.07604	0.07582	0.07412	0.042	
+GO:0005216	Molecular Function	ion channel activity	9.41433566434	3.456e-05	0.07274	0.07267	0.07091	0.042	
+GO:0015267	Molecular Function	channel activity	9.41433566434	3.456e-05	0.07274	0.07267	0.07091	0.042	
+GO:0022803	Molecular Function	passive transmembrane transporter activity	9.41433566434	3.456e-05	0.07274	0.07267	0.07091	0.042	
+GO:0022838	Molecular Function	substrate-specific channel activity	9.41433566434	3.456e-05	0.07274	0.07267	0.07091	0.042	
