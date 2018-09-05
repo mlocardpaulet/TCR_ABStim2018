@@ -102,6 +102,8 @@ Here, the pY are only counted in the pYIP and the S/T in the TiO2. I have counte
 ggplot(export, aes(x = ProportioPassStat)) + geom_histogram() + theme_bw() + ggtitle("Fequency of the sites to pass the statistical thresholds")
 ```
 
+*Actually there seems to be no real need to go through 200 loops for this analysis.*
+
 I make some descriptive figures, like the number of each amino-acid in the table:
 ```{r, echo = F}
 col0 <- c("gray74", "red", "gray14")
@@ -169,6 +171,8 @@ for (el in unique(sp)) {
     tp <- dimnames(mat)[[2]][i]
     vecp <- mat[sp == el,i]
     vecFC <- matFC[sp == el,dimnames(matFC)[[2]]==paste0(tp, ".FC")]
+    vecFC <- vecFC[!is.na(vecFC)]
+    vecp <- vecp[!is.na(vecp)]
     matres[i,1] <- tp
     matres[i,2] <- length(vecFC[vecFC>=1 & vecp <=0.05])
     matres[i,3] <- length(vecFC[vecFC<=-1 & vecp <=0.05])
@@ -195,8 +199,16 @@ gtab$tp1 <- gsub("T", "", gtab$tp1, fixed = T)
 gtab$tp1[gtab$tp1 == "otal"] <- "total"
 gtab$tp1 <- factor(as.character(gtab$tp1), levels = sort(unique(gtab$tp1))[c(6, 2,3,1,4,5)])
   
+# Number of S/T in the regulated sites of the TiO2:
+vec <- as.character(export$psiteID[!is.na(export$Regulation) & export$Regulation=="TRUE" & export$SamplePrep == "TiO2"])
+vec <- gsub("+", "X", vec, fixed = T)
+numS <- length(which((stringr::str_count(vec, "_S") == 1 | stringr::str_count(vec, "XS") == 1)))
+numT <- length(which((stringr::str_count(vec, "_T") == 1 | stringr::str_count(vec, "XT") == 1)))
+numboth <- length(which((stringr::str_count(vec, "_T") == 1 & stringr::str_count(vec, "XS") == 1) | (stringr::str_count(vec, "_S") == 1 & stringr::str_count(vec, "XT") == 1)))
+
+
 # Barplots:
-g1 <- ggplot(gtab, aes(x = tp1, y = value, fill = V4)) + geom_bar(stat = "identity", position = "stack", col = "black") + facet_wrap(~SamplePrep, scales = "free") + theme_minimal() + scale_fill_manual(values = c("dodgerblue3", "grey86", "firebrick2")) + ylab("Time point (sec)") + ylab("Number of regulated phosphorylation site") + labs(title = "there are 47 phosphoT in the total TiO2 and 528 S")
+g1 <- ggplot(gtab, aes(x = tp1, y = value, fill = V4)) + geom_bar(stat = "identity", position = "stack", col = "black") + facet_wrap(~SamplePrep, scales = "free") + theme_minimal() + scale_fill_manual(values = c("dodgerblue3", "grey86", "firebrick2")) + ylab("Time point (sec)") + ylab("Number of regulated phosphorylation site") + labs(title = paste0("there are ", numT, " sites with phosphoT in the total TiO2, and ", numS, " phosphoS."), subtitle = paste0(numboth, " sites have both aa."))
 print(g1)
 
 kable(gtab)
@@ -327,7 +339,7 @@ clusmat <- clusmat[row.names(clusmat) %in% regulatedhits,]
 ```{r, eval = F}
 set.seed(300)
 par(mfrow=c(5,4))
-for (i in 9) {
+for (i in 8) {
         print(paste0("Number of clusters: ", i))
         target <- i
         clusres <- tightClust::tight.clust(clusmat, target = i, k.min = 4, resamp.num = 100, random.seed = 300) # recommanded k.min = target + 5
@@ -335,6 +347,7 @@ for (i in 9) {
         gtab <- melt(data.frame(clusmat[,1:6], "psiteID" = row.names(clusmat)), varnames = c("psiteID", "Cluster"))
         gtab$Cluster <- clusres[[2]][match(gtab$psiteID, row.names(clusmat))]
         #print(ggplot(gtab, aes(x = variable, y = value, col = Cluster, group = Cluster))+stat_summary(fun.y = mean, geom="line", size = 1.2)+scale_color_distiller(palette = "Spectral") + theme_bw())
+        gtab$variable <- factor(as.character(gtab$variable), levels = as.character(sort(unique(gtab$variable))[c(1, 3, 4, 2, 5, 6)]))
         print(ggplot(gtab, aes(x = variable, y = value, group = Cluster, fill = Cluster))+ stat_smooth(method = "loess") + theme_bw()+scale_fill_distiller(palette = "Spectral") + ggtitle(i))
         print(table(clusres$cluster))
 }
@@ -350,7 +363,7 @@ Graphical representation of the different clusters with real values:
 *Here I re-ordered the clusters for the paper based on their kinetic shape and not the number of site:* I reorder as follows: 3, 4, 5, 6, 9, 2, 1, 7, 8.
 
 ```{r, eval = T}
-mapping <- data.frame("ClusteringOuptut" = sort(unique(clusres$cluster)), "NewOrdering" = c(-1, 7, 6, 1, 2, 3, 4, 8, 9, 5))
+mapping <- data.frame("ClusteringOuptut" = sort(unique(clusres$cluster)), "NewOrdering" = c(8,6,2,1,3,5,9,7,4))
 clusres$cluster <- mapping$NewOrdering[match(clusres$cluster, mapping$ClusteringOuptut)]
 ```
 
@@ -360,7 +373,7 @@ clusres$cluster <- mapping$NewOrdering[match(clusres$cluster, mapping$Clustering
 export$ClusterMerged <- clusres$cluster[match(export$psiteID, row.names(clusmat))]
 df <- export[!is.na(export$ClusterMerged),]
 ref <- unique(export$ClusterMerged[!is.na(export$ClusterMerged)])
-ref <- ref[ref!=-1]
+# ref <- ref[ref!=-1]
 
 keepcm <- keepcm[match(df$psiteID, row.names(keepcm)),]
 
@@ -516,7 +529,7 @@ print(g4)
 dev.off()
 ```
 
-**Phospho-tyrosines are over-represented in the clusters 1 and 6.**
+**Phospho-tyrosines are over-represented in the clusters 2 and 3: quick and activation and remains up.**
 
 ## Graphical representation
 

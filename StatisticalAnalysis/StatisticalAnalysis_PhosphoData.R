@@ -252,7 +252,7 @@ while (nLoops > 0) {
     el <- psites[i]
     sub <- subset(df, df$Var1==el)
     subtemp <- sub[!is.na(sub$value),]
-    if (length(table(subtemp$TimePoint)[table(sub$TimePoint) >= 3]) >= 1 & length(unique(sub$TimePoint)) > 3) {
+    if (length(table(subtemp$TimePoint)[table(sub$TimePoint) >= 2]) >= 1 & length(unique(sub$TimePoint)) > 3) {
       anovA <- aov(sub$value~sub$TimePoint, data = sub)
       anovB <- anova(anovA)
       pAnova <- anovB$"Pr(>F)"[1]
