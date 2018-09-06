@@ -1,0 +1,92 @@
+---
+title: "TMT analysis of OT-1 T-cells upon TCR stimulation"
+author: "Marie Locard-Paulet"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+
+```{r Packages, echo=FALSE, message=FALSE, warning=FALSE}
+library(gplots)
+library(knitr)
+library(reshape2)
+library(ggplot2)
+library(dbscan)
+library(missMDA)
+
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r}
+load(file = "RData/11_TableClusters.RData")
+tab <- export
+load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
+```
+
+I plot the sites associated with multiple phosphorylations to see if these do not lead to misleading results.
+
+```{r}
+# I find the proteins with a minimum of one regulated site:
+proteins <- as.character(tab$psiteID)
+proteins <- sapply(proteins, function(x) {
+  strsplit(x, "_", fixed = T)[[1]][1]
+})
+tab$Accession <- proteins
+proteins <- unique(tab$Accession[tab$Regulation == "TRUE"])
+```
+
+There are `r length(proteins)` regulated phospho-proteins in the data set.
+
+```{r}
+source("RFunctions/PlotSite.R")
+for (proteinEL in proteins) {
+  # Find all the sites corresponding to the protein accession:
+  sitesEL <- as.character(tab$psiteID[tab$Accession == proteinEL])
+  if (sum(grepl("+", sitesEL, fixed = T)) > 0) { # There is a multiply phosphorylated peptide
+    if (sum(grepl(";", sitesEL, fixed = T)) > 0) {
+      print(sitesEL)
+      sites4Plot <- sitesEL
+      # # Calculate homogeneous limits for the y-axis:
+      # cols <- which(grepl("MeanLoops", names(tab)))
+      # matylim <- tab[tab$psit %in% sites4Plot,cols]
+      # ylim <- c(min(matylim, na.rm = T)-0.1, max(matylim, na.rm = T)+ 0.1)
+      na <- paste0("Figures/Kinetics/Protein", proteinEL, ".pdf")
+      pdf(na, 5.845, 4.135) # width and height in inches.
+      PlotSite(sites4Plot, tab, save = F)
+      dev.off()
+    }
+    # Find the positions present in the multiply phosphorylated sites:
+    positions <- sapply(sitesEL, function(x) {
+      strsplit(x, "_", fixed = T)[[1]][2]
+    })
+    # positions <- positions[grepl("+", positions, fixed = T)]
+    positions <- lapply(positions, function(x) {
+      gsub("[STY]", "", strsplit(x, "+", fixed = T)[[1]])
+    })
+    positionsMapping <- positions
+    positionsKeep <-grepl("+", sitesEL, fixed = T)
+    positions <- unlist(positions[which(positionsKeep)])
+    positions <- unique(positions)
+    sitesKeep <- sapply(positionsMapping, function(x) {
+      sum(x %in% positions) > 0
+    })
+    sites4Plot <- sitesEL[which(sitesKeep)]
+    # # Calculate homogeneous limits for the y-axis:
+    # cols <- which(grepl("MeanLoops", names(tab)))
+    # matylim <- tab[tab$psit %in% sites4Plot,cols]
+    # ylim <- c(min(matylim, na.rm = T)-0.1, max(matylim, na.rm = T)+ 0.1)
+    na <- paste0("Figures/Kinetics/Protein", proteinEL, ".pdf")
+    pdf(na, 5.845, 4.135) # width and height in inches.
+    PlotSite(sites4Plot, tab, save = F)
+    dev.off()
+  }
+}
+```
+
+
+================================================================================
+
+```{r SessionInfo, echo=FALSE}
+sessionInfo()
+``` 
