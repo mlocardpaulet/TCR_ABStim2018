@@ -87,6 +87,6 @@ PlotSiteYLim <- function(psites, tab, ylim = c(10,40)) { # psites is the vector 
 # psites <- psites[!is.na(psites)]
 # psites <- c("Q3TTA7_Y889")
 # psites <- as.character(tab$psiteID[grepl("Q60949", tab$psiteID)])
-keep <- which(tab$Regulation == "FALSE" & tab$BestFC > 0.8)
-psites <- as.character(tab$psiteID[keep])
-PlotSite(psites, tab)
+# keep <- which(tab$Regulation == "FALSE" & tab$BestFC > 0.8)
+# psites <- as.character(tab$psiteID[keep])
+# PlotSite(psites, tab)

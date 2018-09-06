@@ -16,7 +16,8 @@ library(missMDA)
 
 knitr::opts_chunk$set(echo = FALSE)
 
-colourClus <- c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue")
+colfuncClusters <- colorRampPalette(c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black"))
+colourClus <- colfuncClusters(13)
 ```
 
 
