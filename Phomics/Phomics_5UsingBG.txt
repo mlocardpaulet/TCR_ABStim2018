@@ -1,3 +1,0 @@
-ID	Source	Description	enrichment ratio	p value	p Bonferroni	p Holm	p Sidak	FDR
-GO:0006272	Biological Process	leading strand elongation	199.444444444	3.814e-05	0.02765	0.02765	0.02696	0.024	
-GO:0003896	Molecular Function	DNA primase activity	170.952380952	5.335e-05	0.03868	0.03863	0.03771	0.028	
