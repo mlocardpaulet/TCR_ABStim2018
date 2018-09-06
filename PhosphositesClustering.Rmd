@@ -18,6 +18,9 @@ library(RColorBrewer)
 library("viridis")
 
 library(Rmisc) # multiplot()
+
+colfuncClusters <- colorRampPalette(c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black"))
+colfunclight <- colorRampPalette(c("black", "darkred", "red","yellow"))
 ```
 
 # Generation of the input data
@@ -47,7 +50,7 @@ I perform an anova on each phosphorylation site across the 6 time points (only t
 
 I calculate the fold changes per time point relative to each other.
 
-The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to 1. I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition, and 5 time points.
+The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition, and 5 time points.
 
 This is performed 200 times, then I keep as variants only the sites that pass these threshold a minimum of 90% of the times. All the fold change values reported are the averages of the 200 iterations.
 
@@ -339,7 +342,7 @@ clusmat <- clusmat[row.names(clusmat) %in% regulatedhits,]
 ```{r, eval = F}
 set.seed(300)
 par(mfrow=c(5,4))
-for (i in 8) {
+for (i in 12) {
         print(paste0("Number of clusters: ", i))
         target <- i
         clusres <- tightClust::tight.clust(clusmat, target = i, k.min = 4, resamp.num = 100, random.seed = 300) # recommanded k.min = target + 5
@@ -360,10 +363,10 @@ load(file = "RData/10_Clusters.Rdata")
 ```
 
 Graphical representation of the different clusters with real values:
-*Here I re-ordered the clusters for the paper based on their kinetic shape and not the number of site:* I reorder as follows: 3, 4, 5, 6, 9, 2, 1, 7, 8.
+*Here I re-ordered the clusters for the paper based on their kinetic shape and not the number of site:* 
 
 ```{r, eval = T}
-mapping <- data.frame("ClusteringOuptut" = sort(unique(clusres$cluster)), "NewOrdering" = c(8,6,2,1,3,5,9,7,4))
+mapping <- data.frame("ClusteringOuptut" = sort(unique(clusres$cluster)), "NewOrdering" = c(13,1,4,5,3,2,6,12,9,11,8,7,10))
 clusres$cluster <- mapping$NewOrdering[match(clusres$cluster, mapping$ClusteringOuptut)]
 ```
 
@@ -379,7 +382,8 @@ keepcm <- keepcm[match(df$psiteID, row.names(keepcm)),]
 
 ylims <- c(-1, 1)
 for (i in 1:length(ref)) {
-        colour <- c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue")[i]
+        # colour <- c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue")[i]
+        colour <- colfuncClusters(length(ref))[i]
         gtab <- keepcm[df$ClusterMerged==sort(ref)[i],]
         #gtab[,c(3:7)] <- apply(gtab[,3:7], 2, as.numeric)
         ti <- paste0("Scaled cluster_", sort(ref)[i])
@@ -421,7 +425,7 @@ for (i in 1:length(ref)) {
 
 ylims <- c(-1, 1)
 for (i in 1:length(ref)) {
-        colour <- c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue")[i]
+        colour <- colfuncClusters(length(ref))[i]
         gtab <- keepcm[df$ClusterMerged==sort(ref)[i],]
         #gtab[,c(3:7)] <- apply(gtab[,3:7], 2, as.numeric)
         ti <- paste0("Unscaled cluster_", sort(ref)[i])
@@ -480,44 +484,59 @@ labposPie <- function(vec) {
   for (i in 2:length(vec)) {
     res[i] <- (sum(vec[1:i-1])+(vec[i]/2))/sum(vec)
   }
-  (res+0.01)
+  res <- 1 - res
 }
 
 # For tyrosines:
 gtab1 <- as.data.frame(table(gtab$ClusterMerged[gtab$aa=="Y" & gtab$ClusterMerged != "NoRegulation"]))
-gtab1$Var1 <- factor(gtab1$Var1, levels = c(9,8,7,6,5,4,3,2,1, -1))
+gtab1 <- gtab1[order(as.numeric(as.character(gtab1$Var1))),]
+gtab1$Var1 <- factor(gtab1$Var1, levels = as.character(gtab1$Var1))
 gtab1$pos <- labposPie(gtab1$Freq)
-g1 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pY") + scale_fill_manual(values = c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black")[c(9,8,7,6,5,4,3,2,1, 10)]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+gtab1$facet <- ifelse(gtab1$Var1 %in% c(1, 2, 3, 4, 5), "up", "down")
+gtab1$facet[gtab1$Var1 == 13] <- "Mixed"
+g1 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pY") + scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+ggplot(gtab1, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pY") + scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() + facet_wrap(.~facet, scales = "free_x")
 kable(gtab1)
 gtab2 <- cbind(gtab1, "AminoAcid" = rep("pY", nrow(gtab1)))
 # For serines:
 gtab1 <- as.data.frame(table(gtab$ClusterMerged[gtab$aa=="S" & gtab$ClusterMerged != "NoRegulation"]))
-gtab1$Var1 <- factor(gtab1$Var1, levels = c(9,8,7,6,5,4,3,2,1, -1))
+gtab1 <- gtab1[order(as.numeric(as.character(gtab1$Var1))),]
+gtab1$Var1 <- factor(gtab1$Var1, levels = as.character(gtab1$Var1))
 gtab1$pos <- labposPie(gtab1$Freq)
-g2 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pS") + scale_fill_manual(values = c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black")[c(8,7,6,5,4,3,2,1, 9, 10)]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
-kable(gtab1)
+gtab1$facet <- ifelse(gtab1$Var1 %in% c(1, 2, 3, 4, 5), "up", "down")
+gtab1$facet[gtab1$Var1 == 13] <- "Mixed"
+g2 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pS") + scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+ggplot(gtab1, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pS") + scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() + facet_wrap(.~facet, scales = "free_x")
+kable(gtab1) 
 gtab2 <- rbind(gtab2, cbind(gtab1, "AminoAcid" = rep("pS", nrow(gtab1))))
 # For threonines:
 gtab1 <- as.data.frame(table(gtab$ClusterMerged[gtab$aa=="T" & gtab$ClusterMerged != "NoRegulation"]))
-gtab1$Var1 <- factor(gtab1$Var1, levels = c(9,8,7,6,5,4,3,2,1, -1))
+gtab1 <- gtab1[order(as.numeric(as.character(gtab1$Var1))),]
+gtab1$Var1 <- factor(gtab1$Var1, levels = as.character(gtab1$Var1))
 gtab1$pos <- labposPie(gtab1$Freq)
-g3 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pT") + scale_fill_manual(values = c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black")[c(8,7,6,5,4,3,2,1, 9, 10)]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+gtab1$facet <- ifelse(gtab1$Var1 %in% c(1, 2, 3, 4, 5), "up", "down")
+gtab1$facet[gtab1$Var1 == 13] <- "Mixed"
+g3 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pT") + scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+ggplot(gtab1, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pT") + scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() + facet_wrap(.~facet, scales = "free_x")
 kable(gtab1)
 gtab2 <- rbind(gtab2, cbind(gtab1, "AminoAcid" = rep("pT", nrow(gtab1))))
 
 gtab2$group <- paste0(gtab2$Var1, gtab2$`AminoAcid`)
-gtab2$facet <- ifelse(gtab2$Var1 %in% c(1, 2, 3, 4), "up", "down")
-totpY <- sum(gtab2$Freq[gtab2$`AminoAcid`=="pY"])
-totpS <- sum(gtab2$Freq[gtab2$`AminoAcid`=="pS"])
-totpT <- sum(gtab2$Freq[gtab2$`AminoAcid`=="pT"])
-gtab2$RelativeToTot <- gtab2$Freq
-gtab2$RelativeToTot <- as.numeric(as.character(gtab2$RelativeToTot))
-gtab2$RelativeToTot[gtab2$AminoAcid=="pY"] <- gtab2$RelativeToTot[gtab2$AminoAcid=="pY"]/totpY
-gtab2$RelativeToTot[gtab2$AminoAcid=="pS"] <- gtab2$RelativeToTot[gtab2$AminoAcid=="pS"]/totpS
-gtab2$RelativeToTot[gtab2$AminoAcid=="pT"] <- gtab2$RelativeToTot[gtab2$AminoAcid=="pT"]/totpT
+gtab2$facet <- ifelse(gtab2$Var1 %in% c(1, 2, 3, 4, 5), "up", "down")
+gtab2$facet[gtab2$Var1 == 13] <- "Mixed"
+# totpY <- sum(gtab2$Freq[gtab2$`AminoAcid`=="pY"])
+# totpS <- sum(gtab2$Freq[gtab2$`AminoAcid`=="pS"])
+# totpT <- sum(gtab2$Freq[gtab2$`AminoAcid`=="pT"])
+# gtab2$RelativeToTot <- gtab2$Freq
+# gtab2$RelativeToTot <- as.numeric(as.character(gtab2$RelativeToTot))
+# gtab2$RelativeToTot[gtab2$AminoAcid=="pY"] <- gtab2$RelativeToTot[gtab2$AminoAcid=="pY"]/totpY
+# gtab2$RelativeToTot[gtab2$AminoAcid=="pS"] <- gtab2$RelativeToTot[gtab2$AminoAcid=="pS"]/totpS
+# gtab2$RelativeToTot[gtab2$AminoAcid=="pT"] <- gtab2$RelativeToTot[gtab2$AminoAcid=="pT"]/totpT
 gtab2 <- gtab2[!is.na(gtab2$Var1),]
 
-g4 <- ggplot(gtab2, aes(x = group, y = RelativeToTot, fill = Var1, group = group)) +  geom_bar(width = 1, stat = "identity", position = "dodge", col = "grey80")  + ggtitle("Relative quantities per cluster") + scale_fill_manual(values = c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black")[c(9,8,7,6,5,4,3,2,1, 10)]) + theme_minimal() 
+# g4 <- ggplot(gtab2, aes(x = group, y = RelativeToTot, fill = Var1, group = group)) +  geom_bar(width = 1, stat = "identity", position = "dodge", col = "grey80")  + ggtitle("Relative quantities per cluster") + scale_fill_manual(values = colfuncClusters(13)[gtab1$Var1]) + theme_minimal()  + facet_wrap(.~facet, scales = "free_x")
+g4 <- ggplot(gtab2, aes(x = Var1, y = Freq, fill = AminoAcid, group = group)) +  geom_bar(width = 1, stat = "identity", position = "dodge", col = "grey80")  + ggtitle("Relative quantities per cluster") + scale_fill_manual(values = c('grey30', 'grey60', 'grey80')) + theme_minimal()  + facet_wrap(.~facet, scales = "free_x")
+
 print(g4)
 
 na <- "Figures/ClustersPerAA.pdf"
@@ -529,7 +548,7 @@ print(g4)
 dev.off()
 ```
 
-**Phospho-tyrosines are over-represented in the clusters 2 and 3: quick and activation and remains up.**
+**Phospho-tyrosines are over-represented in the up-regulated clusters.**
 
 ## Graphical representation
 
@@ -589,10 +608,10 @@ for (i in 1:length(ref)) {
   hm <- hm[,order(ord)]
   ord <- rowMeans(hm, na.rm = T)
   
-  heatmap.2(hm[order(ord, decreasing = T),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=viridis(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
+  heatmap.2(hm[order(ord, decreasing = T),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=colfunclight(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
   na <- paste0("Figures/TileMap_Means_Cluster", "_", el, ".pdf")
   pdf(na, useDingbats=FALSE, 8.27, 11.69)
-  heatmap.2(hm[order(ord, decreasing = T),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=viridis(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
+  heatmap.2(hm[order(ord, decreasing = T),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=colfunclight(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
   dev.off()
 }
 

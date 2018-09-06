@@ -349,7 +349,7 @@ while (nLoops > 0) {
   
   
   # SIGNIFICATIVITY THRESHOLD:
-  mer$Regulation <- ifelse(!is.na(mer$BestFC) & abs(as.numeric(as.character(mer$BestFC)))>=1 & (as.numeric(as.character(mer$pAnova))<=0.05), "Regulated", "Not regulated")
+  mer$Regulation <- ifelse(!is.na(mer$BestFC) & abs(as.numeric(as.character(mer$BestFC))) > log2(1.5) & (as.numeric(as.character(mer$pAnova))<=0.05), "Regulated", "Not regulated")
   
   MatAfterStat[[length(MatAfterStat)+1]] <- mer
   
