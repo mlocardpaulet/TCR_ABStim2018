@@ -59,18 +59,9 @@ names(lm) <- BioRep
 
 lm <- lapply(lm, function(x) x[,c(1, 5, 4, 3, 2, 6)])
 
-# # Tableau pour Guillaume :
-# for (i in 1:length(lm)) {
-#         na <- paste0("OutputTablesRscripts/BioRep", i, "Prot.txt")
-#         write.table(lm[[i]], na, sep = "\t")
-# }
-# write.table(prot, "OutputTablesRscripts/RawProt.txt", sep = "\t", row.names = F)
-
 ################################################################################
 ###### Statistical analysis
 ################################################################################
-
-#load("OutputTablesRscripts/RawProt.Rdata")
 
 ################################################################################
 # For this analysis I generate a loop. This allows the repetition of the entire analysis and we considere regulated the phosphorylation sites that are significantly regulated 90% of the times.

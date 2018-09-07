@@ -44,7 +44,7 @@ From there, I run a loop of 200 iterations that contain the following steps:
 
 For each phosphorylation site, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (biological variance). 
 
-For each phosphorylation site, I normalise the biological replicates using the median before of the signal across all the conditions.
+For each phosphorylation site, I normalise the biological replicates using the median of the signal across all the conditions (before replacement of missing values).
 
 I perform an anova on each phosphorylation site across the 6 time points (only the phosphorylation sites with quantification values in a minimum of two biological replicates). Then, I correct the pvalue with Tukey HSD. 
 
@@ -264,7 +264,7 @@ matReg <- matReg[,order(dimnames(matReg)[[2]])]
 matpTuk <- matpTuk[,order(dimnames(matpTuk)[[2]])]
 
 for (j in 1:ncol(matFC)) {
-  matReg[,j] <- abs(matFC[,j])>=1 & matpTuk[,j]<=0.05 & tab$Regulation == TRUE
+  matReg[,j] <- abs(matFC[,j])>=log2(1.5) & matpTuk[,j]<=0.05 & tab$Regulation == TRUE
 }
 matReg[matReg] <- "regulated"
 matReg[matReg==FALSE] <- "not regulated"

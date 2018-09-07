@@ -1,0 +1,343 @@
+---
+title: "Functional analysis of regulated psites upon TCR stimulation"
+author: "Marie Locard-Paulet"
+date: '`r date()`'
+output: html_document
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+require(ggplot2)
+require(ggrepel)
+require(reshape2)
+require(gplots)
+require(ClueR)
+require(Biobase)
+require(matrixStats) # rowMax()
+require(knitr)
+require(Rmisc) # multiplot()
+require(ggdendro)
+require(FactoMineR)
+require(clusterProfiler)
+require(org.Hs.eg.db)
+require(ReactomePA)
+require(DOSE)
+require(ksrlive)
+require(RColorBrewer)
+```
+
+This document contains the functional analysis of proteomic data set described in the document `DataPreparation_Proteome`. I used the LFQ-normalised quantification values for the statistical test (see `StatisticalAnalysis/StatisticalAnalysisProteins`).
+
+
+# Filters and statistical analysis
+
+See the data preparation in the document `DataPreparation_Proteome` (this document contains QC plots).
+
+I cleaned-up the data as follows:
+
+* Remove the Protein.IDs fields containing CON_ or _REV.
+* Remove the proteins with 0 or 1 unique peptide identified.
+* Replace the 0 LFQ values with NA.
+
+I log2-transform the data set.
+For each replicate independently, I calculate the mean of the injection replicates in each time point.
+
+From there, I run a loop of 200 iterations that contain the following steps:
+
+For each protein, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (biological variance). 
+
+For each protein, I normalise the biological replicates using the median of the signal across all the conditions (before replacement of missing values).
+
+I perform an anova on each protein site across the 6 time points. Then, I correct the pvalue with Tukey HSD. 
+
+I calculate the fold changes per time point relative to each other.
+
+The thresholds for a protein to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(2). 
+
+This is performed 200 times, then I keep as variants only the sites that pass these threshold a minimum of 90% of the times. All the fold change values reported are the averages of the 200 iterations.
+
+# Results of the statistical analysis
+
+```{r}
+Prottab <- read.table("SupTables/ProtfinalStat.txt", sep = "\t", header = T)
+```
+
+# Volcano plots of the anova:
+
+
+```{r}
+tab <- Prottab
+tab <- tab[!is.na(tab$pAnova),]
+matFC <- tab[,grepl(".FC", names(tab), fixed = T)]
+# Calculate the maximum fold changes:
+vec <- rep(NA, nrow(matFC))
+for (j in 1:nrow(matFC)) {
+  v <- as.numeric(matFC[j,])
+  if (length(v)>0) {
+    vm <- max(abs(v))
+    vec[j] <- v[abs(v)==vm][1]      
+  }
+}
+
+labels <- as.character(tab$Majority.protein.IDs[tab$Regulation])
+labs <- rep(NA, nrow(tab))
+labs[tab$Majority.protein.IDs %in% labels] <- labels
+gtab <- data.frame(tab, "y"=-(log10(as.numeric(as.character(tab$pAnova)))), "col" = ifelse(tab$Regulation, "regulated", "not regulated"), "x" = vec, "Prot" = labs)
+ti <- paste0("Volcano anova for the proteins")
+g <- ggplot(data = gtab, aes(x = x, y = y, col = col, label = Prot)) + geom_point(alpha = 0.5, size = 2) + scale_color_manual(values = c("black", "red")) + ylab("-log10(pvalue anova)") + ggtitle(ti) + geom_text_repel() + theme_bw()
+print(g)
+na <- paste0("Figures/Anova_Proteins.pdf")
+pdf(na, useDingbats=FALSE, 11.69, 8.27)
+print(g)
+dev.off()
+
+print("Number of regulated proteins:")
+treg <- table(gtab$col)
+kable(cbind(names(treg), treg))
+```
+
+I also draw the volcano plots per time point in order to get a feel for the statistics at each time point. These are saved in `Figures`.
+
+```{r, echo=FALSE}
+lg <- list()
+tab <- Prottab
+tab <- tab[!is.na(tab$pAnova),]
+matFC <- tab[,grepl(".T0.FC", names(tab), fixed = T)]
+matpTuk <- tab[,grepl("T0", names(tab), fixed = T) & !grepl(".T0.FC", names(tab), fixed = T)]
+matReg <- matrix(ncol = ncol(matFC), nrow = nrow(matFC))
+dimnames(matReg)[[2]] <- dimnames(matpTuk)[[2]]
+matFC <- matFC[,order(dimnames(matFC)[[2]])]
+matReg <- matReg[,order(dimnames(matReg)[[2]])]
+matpTuk <- matpTuk[,order(dimnames(matpTuk)[[2]])]
+
+for (j in 1:ncol(matFC)) {
+  matReg[,j] <- abs(matFC[,j])>=1 & matpTuk[,j]<=0.05 & tab$Regulation == TRUE
+}
+matReg[matReg] <- "regulated"
+matReg[matReg==FALSE] <- "not regulated"
+
+for (j in 1:ncol(matReg)) {
+  gtab <- data.frame("pTukey" = matpTuk[,j], "log2FC" = matFC[,j], "Regulation" = matReg[,j])
+  ti <- paste0("Volcano anova proteins ", dimnames(matReg)[[2]][j])
+  g <- ggplot(data = gtab, aes(x = log2FC, y = -log10(pTukey), col = Regulation)) + geom_point(alpha = 0.5, size = 1) + scale_color_manual(values = c("black", "red")) + ylab("-log10(pvalue Tukey)") + ggtitle(ti) + theme_minimal() 
+  lg[[length(lg)+1]] <- g
+}
+na <- paste0("Figures/IndividualAnova_Proteins.pdf")
+pdf(na, useDingbats=FALSE, 11.69, 8.27)
+multiplot(lg[[1]], lg[[2]], cols = 2)
+multiplot(lg[[3]], lg[[4]], cols = 2)
+multiplot(lg[[5]], lg[[1]], cols = 2)
+dev.off()
+```
+
+# Regulated proteins
+
+The regulated proteins are: `r as.character(Prottab$Protein.IDs[!is.na(Prottab$Regulation) & Prottab$Regulation])`.
+
+
+Heatmap:
+
+```{r, echo = F}
+colfuncdarkpos <- colorRampPalette(c("black", "red","yellow"))
+
+reg <- as.character(Prottab$Protein.IDs[!is.na(Prottab$Regulation) & Prottab$Regulation])
+hm <- as.matrix(Prottab[Prottab$Majority.protein.IDs %in% reg, c(684:707)])
+# Reorder the columns:
+ord <- gsub("R[12354]S", "", colnames(hm))
+ord <- gsub("R[12354]N", "N", ord)
+ord <- gsub(".", "", ord, fixed = T)
+ord <- gsub("NS", "0", ord, fixed = T)
+ord <- as.numeric(ord)
+hm <- hm[,order(ord)]
+
+row.names(hm) <- as.character(Prottab$Majority.protein.IDs[Prottab$Majority.protein.IDs %in% reg])
+sep <- c(4, 8, 12, 16, 20)
+na <- paste0("Figures/TileMap_Prot.pdf")
+pdf(na, useDingbats=FALSE, 8.27, 11.69)
+heatmap.2(hm, mar = c(7, 10), main = paste0("LFQ values of proteins"), col=colfuncdarkpos(100), tracecol="black", cexCol = 0.9, scale = "none", trace = "none", Colv = F, cexRow = 0.45, colsep = sep, keysize = 1, na.color = "grey", na.rm = T)
+dev.off()
+jpeg("Figures/TileMap_Prot.jpg", 8.27, 11.69, units = "in", res = 300) # width and height in inches.
+heatmap.2(hm, mar = c(7, 10), main = paste0("LFQ values of proteins"), col=colfuncdarkpos(100), tracecol="black", cexCol = 0.9, scale = "none", trace = "none", Colv = F, cexRow = 0.45, colsep = sep, keysize = 1, na.color = "grey", na.rm = T)
+dev.off()
+```
+
+![](Figures/TileMap_Prot.jpg)
+
+# Number of phosphorylation site per protein
+
+
+```{r}
+load(file = "RData/08_StatResults_Phospho.RData")
+load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
+load(file = "RData/05_ParsedTablesNormPSP.RData")
+
+export$SamplePrep <- ifelse(grepl("_Y", export$psiteID, fixed = T) | grepl("+Y", export$psiteID, fixed = T), "pYIP", "TiO2")
+phostab <- export
+rm(export)
+phostab$Accession <- sapply(phostab$psiteID, function(x) {
+  strsplit(as.character(x), "_", fixed = T)[[1]][1]
+})
+```
+
+```{r, echo = F, warning=FALSE}
+# Add the protein accession to the psiteInfo:
+#############################################
+for (i in seq_along(psiteInfo)) {
+  li <- psiteInfo[[i]]
+  accession <- strsplit(li$phosphoSites, "_", fixed = T)[[1]][1]
+  accession <- strsplit(accession, ";", fixed = T)[[1]]
+  li$ProteinAccession <- accession
+  psiteInfo[[i]] <- li
+}
+
+# Count the number of phosphorylation per protein (excluding the multiply phosphorylated peptides):
+################################################################################
+MonoSites <- sapply(psiteInfo, function(x) {
+  x$MonoSites
+})
+ProteinAccession <- sapply(psiteInfo, function(x) {
+  paste(x$ProteinAccession, collapse = ";")
+})
+mappingMonositesProt <- data.frame("ProteinAccession" = ProteinAccession, "MonoSites" = sapply(MonoSites, function(x) {x[1]}))
+HasMultipleSites <- sapply(MonoSites, length)
+HasMultipleSites <- which(HasMultipleSites > 1)
+ProteinAccession <- ProteinAccession[HasMultipleSites]
+MonoSites <- MonoSites[HasMultipleSites]
+for (i in seq_along(HasMultipleSites)) {
+  accession <- ProteinAccession[i]
+  Sites2Add <- MonoSites[[i]][2:length(MonoSites[[i]])]
+  for (j in seq_len(length(Sites2Add))) {
+    mappingMonositesProt <- rbind(mappingMonositesProt, c(accession, Sites2Add[j]))
+  }
+}
+mappingMonositesProt <- mappingMonositesProt[!duplicated(mappingMonositesProt),]
+
+gtab <- as.data.frame(table(mappingMonositesProt$ProteinAccession))
+g1 <- ggplot(gtab, aes(x = Freq)) + geom_histogram(binwidth = 1) + theme_minimal() + xlab("Number of phosphorylation site per protein identified in the data set")
+
+# To plot an inset:
+# Specify position of plot2 (in percentages of plot1)
+# This is in the top right and 50% width and 25% height
+xleft   = 0.30
+xright  = 0.95
+ybottom = 0.40
+ytop    = 0.95 
+
+g2 <- ggplot(gtab[gtab$Freq>10,], aes(x = Freq)) + geom_histogram(binwidth = 1) + theme_minimal()
+g3 <- ggplotGrob(g2)
+
+x1 = layer_scales(g1)$x$range$range[1]
+x2 = layer_scales(g1)$x$range$range[2]
+y1 = layer_scales(g1)$y$range$range[1]
+y2 = layer_scales(g1)$y$range$range[2]
+xdif = x2-x1
+ydif = y2-y1
+xmin  = x1 + (xleft*xdif)
+xmax  = x1 + (xright*xdif)
+ymin  = y1 + (ybottom*ydif)
+ymax  = y1 + (ytop*ydif) 
+
+g2 <- ggplot(gtab[gtab$Freq>10,], aes(x = Freq)) + geom_histogram(binwidth = 1) + xlab("") + ylab("") + ggtitle("Proteins with more than 10 phosphorylation sites")
+g3 <- ggplotGrob(g2)
+g <- g1 + annotation_custom(grob = g3, xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+print(g)
+
+na <- paste0("Figures/HistPsitePerProt.pdf")
+pdf(na, useDingbats=FALSE, 11.69, 8.27)
+g
+dev.off()
+```
+
+# Phosphorylation site relative to protein quantification
+
+```{r, echo = F}
+# Create matching between the protein table and phospho table:
+##############################################################
+ProteinTableIDs <- as.character(Prottab$Majority.protein.IDs)
+for (i in seq_along(psiteInfo)) {
+  li <- psiteInfo[[i]]
+  accession <- strsplit(li$phosphoSites, "_", fixed = T)[[1]][1]
+  accession <- strsplit(accession, ";", fixed = T)[[1]]
+  li$ProteinAccession <- accession
+  if (length(accession) == 1) {
+    li$ProteinTableID <- ProteinTableIDs[grepl(accession, ProteinTableIDs)]
+  } else {
+    temp <- rep(NA, length(accession))
+    for (el in accession) {
+      if (sum(grepl(el, ProteinTableIDs)) > 0) {
+        temp[length(temp) + 1] <- ProteinTableIDs[grepl(el, ProteinTableIDs)]
+      }
+    }
+    temp <- unique(temp)
+    temp <- temp[!is.na(temp)]
+    li$ProteinTableID <- temp
+  }
+  psiteInfo[[i]] <- li
+}
+```
+
+When a phosphorylation site matches to several proteins, I take the first one that comes out.
+
+```{r, echo = F}
+# To match the protein table rows to the phosphotable:
+######################################################
+protMatching <- sapply(psiteInfo, function(x) {
+  x$ProteinTableID[1]
+})
+phosMatching <- names(psiteInfo)
+```
+
+```{r, echo = F, warning=FALSE, eval = T}
+suspiciousProt <- vector()
+lg <- list()
+regulatedsites <- as.character(phostab$psiteID[phostab$Regulation == "TRUE"])
+for (el in names(phostab)[grepl(".FC", names(phostab), fixed = T)]) {
+        pval <- strsplit(el, ".FC", fixed = T)[[1]][1]
+        x <- Prottab[match(protMatching[match(phostab$psiteID, phosMatching)], Prottab$Majority.protein.IDs),el]
+        df <- data.frame("psite" = as.character(phostab$GeneID), "y" = phostab[,el], "x" = x, "BestpTuk" = phostab[,pval], "BestFC" = phostab[,el])
+        df <- df[!is.na(df$BestpTuk),]
+        col <- ifelse(!is.na(df$BestpTuk) & !is.na(df$BestFC) & (df$BestpTuk<=0.05 & df$BestFC>=log2(1.5))|(df$BestpTuk<=0.05 & df$BestFC<=-log2(1.5)), "phospho-regulated", "not regulated")
+        labels <- as.character(df$psite)
+        RegulatedLabels <- (df$y >= log2(1.5) & df$x >= log2(1.5)) | (df$y <= -log2(1.5) & df$x <= -log2(1.5))
+        labels[!(RegulatedLabels) | col == "not regulated"] <- NA
+        df <- data.frame(df, "col" = col, "label" = labels)
+        # To keep xlim == ylim:
+        #######################
+        lims <- range(c(df$y, df$x), na.rm = T)
+        g <- ggplot(data = df, aes(x = x, y = y, col = col, label = label, shape = col)) + geom_hline(yintercept = 0) + geom_hline(yintercept = c(-log2(1.5), log2(1.5)), linetype = "dotted") + geom_vline(xintercept = c(-log2(1.5), log2(1.5)), linetype = "dotted") + geom_vline(xintercept = 0) + geom_point(data = df[col == "not regulated",],alpha = 0.6) + geom_point(data = df[col == "phospho-regulated",],alpha = 0.6) + geom_text_repel(data = df) + scale_shape_manual(values = c(1, 16)) + scale_color_manual(values = c("mediumseagreen", "black")) + theme_minimal() + ylim(lims) + xlim(lims)  + ggtitle(el) + ylab("log2-transformed Phosphorylation site fold change relative to unstimulated") + xlab("log2-transformed protein fold change relative to unstimulated")
+        print(g)
+        lg[[length(lg)+1]] <- g +  theme(legend.position="none")
+        suspiciousProt <- unique(c(suspiciousProt, as.character(df$label)[!is.na(df$label) & !is.na(df$x) & !is.na(df$y)]))
+}
+
+na <- paste0("Figures/PsitesVsProt.pdf")
+pdf(na, useDingbats=FALSE, 11.69, 8.27)
+multiplot(lg[[1]], lg[[2]], cols = 2)
+multiplot(lg[[3]], lg[[4]], cols = 2)
+multiplot(lg[[5]], lg[[6]], cols = 2)
+multiplot(lg[[7]], lg[[8]], cols = 2)
+multiplot(lg[[9]], lg[[10]], cols = 2)
+multiplot(lg[[11]], lg[[12]], cols = 2)
+multiplot(lg[[13]], lg[[14]], cols = 2)
+multiplot(lg[[15]], lg[[1]], cols = 2)
+dev.off()
+
+# Number of phosphosite with an associated protein quantification:
+##################################################################
+countProtMapped <- table(sapply(psiteInfo, function(x) {
+  length(x$ProteinTableID) > 0
+}))
+
+int <- countProtMapped[names(countProtMapped) == "TRUE"]
+perint <- round((int/length(psiteInfo))*100, 2)
+```
+
+There is `r perint`% of the phosphorylation sites (mono and multi) with an available protein quantification.
+
+A few of the regulated phosphorylation sites have a FC that correlates slightly with the corresponding protein. These are: `r sort(suspiciousProt)`. *This only takes into account the fold changes of the proteins, not the pvalue (reproducibility).*
+
+
+
+
+```{r, echo = F}
+sessionInfo()
+```
