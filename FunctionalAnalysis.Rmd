@@ -1,0 +1,291 @@
+---
+title: "Functional analysis of regulated psites upon TCR stimulation"
+author: "Marie Locard-Paulet"
+date: '`r date()`'
+output: html_document
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(ggplot2)
+library(ggrepel)
+library(reshape2)
+library(gplots)
+library(knitr)
+library(clusterProfiler)
+library(RColorBrewer)
+library("viridis")
+
+library(Rmisc) # multiplot()
+
+colfuncClusters <- colorRampPalette(c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black"))
+colfunclight <- colorRampPalette(c("black", "darkred", "red","yellow"))
+```
+
+# Generation of the input data
+
+## phosphorylation sites IDs
+
+There are some issues with protein IDs. For peptide identification. Some peptides are ambiguous, they can belong to several proteins/proteoforms with common sequences. I keep the `Proteins` field in the raw table. This allows us to keep the information of what phosphosite could belong to several proteoforms and what the corresponding phosphorylation position in the protein sequence are. I have ordered them by alphabetical order.
+
+To generate the phosphosite IDs, I keep all possible protein identifications (Uniprot entry names) separated by ";", together with their respective positions separated by ";".
+
+## Filters and statistical analysis
+
+Each data set (TiO2 and pY-IP) is analysed independently.
+
+See the data preparation in the document `DataPreparation.html`.
+
+I log2-transform the data set.
+For each replicate independently, I calculate the mean of the injection replicates in each time point.
+
+From there, I run a loop of 200 iterations that contain the following steps:
+
+For each phosphorylation site, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (biological variance). 
+
+For each phosphorylation site, I normalise the biological replicates using the median of the signal across all the conditions (before replacement of missing values).
+
+I perform an anova on each phosphorylation site across the 6 time points (only the phosphorylation sites with quantification values in a minimum of two biological replicates). Then, I correct the pvalue with Tukey HSD. 
+
+I calculate the fold changes per time point relative to each other.
+
+The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition, and 5 time points.
+
+This is performed 200 times, then I keep as variants only the sites that pass these threshold a minimum of 90% of the times. All the fold change values reported are the averages of the 200 iterations.
+
+I flagged the sites that were also regulated in the protein data set (based on FC only).
+
+```{r}
+load(file = "RData/11_TableClusters.RData")
+load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
+
+export$SamplePrep <- ifelse(grepl("_Y", export$psiteID, fixed = T) | grepl("+Y", export$psiteID, fixed = T), "pYIP", "TiO2")
+```
+
+--------------------------------------------------------------------------------
+
+# ProteomeScout analysis
+
+I work with [ProteomeScout](https://proteomescout.wustl.edu).
+
+After retrieving information from the ProteomeScout website (07/09/2018). The phosphorylation database is dated of Mon Sep 3 15:25:55 2018.
+
+*I previously removed from the document the characters "'".*
+
+```{r, eval = F}
+annotations <- read.table(file = "ProteomeScout_20180907/data.tsv", sep = "\t", header = T, stringsAsFactors = F)
+annotations$FirstAccession <- sapply(annotations$accessions, function(x) {
+  strsplit(x, ";", fixed = T)[[1]][1]
+})
+annotations$position <- sapply(annotations$modifications, function(x) {
+  strsplit(x, ";", fixed = T)[[1]][1]
+})
+annotations$position <- sapply(annotations$modifications, function(x) {
+  strsplit(x, "-", fixed = T)[[1]][1]
+})
+annotations$annotationsID <- seq_len(nrow(annotations))
+
+# annotations$mapping <- paste0(annotations$FirstAccession, "_", annotations$position)
+annotationsMapping <- sapply(annotations$accessions, function(x) {
+  strsplit(x, "; ")[[1]][!grepl("NP_", strsplit(x, "; ")[[1]], fixed = T)]
+})
+lID <- vector(mode = "list")
+for (i in seq_along(annotationsMapping)) {
+  posi <- paste0("_", annotations$position[i])
+  lID[[i]] <- paste0(annotationsMapping[[i]], rep(posi, length(annotationsMapping[[i]])))
+}
+names(lID) <- annotations$annotationsID
+
+# Mapping of monosites:
+#######################
+monosites <- unique(unlist(sapply(psiteInfo, function(x) x$"MonoSites")))
+lID <- lapply(lID, function(x) {
+  x[!grepl(".", x, fixed = T)]
+})
+IDSites <- unlist(lID)
+Numbers <- sapply(seq_along(lID), function(x) {
+  rep(names(lID)[x], length(lID[[x]]))
+})
+Numbers <- unlist(Numbers)
+mappingIDPScout <- data.frame("annotationsID" = Numbers, "MonoSites" = IDSites, stringsAsFactors = F)
+mappingIDPScout <- mappingIDPScout[!duplicated(mappingIDPScout),]
+mappingIDPScout <- mappingIDPScout[mappingIDPScout$MonoSites %in% monosites,]
+rm(list = c("IDSites", "Numbers"))
+
+for (i in seq_along(psiteInfo)) {
+  li <- psiteInfo[[i]]
+  monos <- li$MonoSites
+  temp <- unique(mappingIDPScout$annotationsID[match(monos, mappingIDPScout$MonoSites)])
+  li$annotationsID <- temp[!is.na(temp)]
+  psiteInfo[[i]] <- li
+}
+# I double check that there is only one annotation ID per phosphosite.
+table(sapply(psiteInfo, function(x) {length(x$annotationsID)}))
+
+vec <- sapply(psiteInfo, function(x) {x$annotationsID})
+vec <- unlist(vec)
+export$annotationsID <- vec[match(export$psiteID, names(vec))]
+annotations <- annotations[annotations$annotationsID %in% export$annotationsID[!is.na(export$annotationsID)],]
+annotations$annotationsID <- as.character(annotations$annotationsID)
+
+annotationtab <- merge(export, annotations, by = "annotationsID", all = T)
+mappingAnnotations <- annotationtab[, names(annotationtab) %in% c("psiteID", "annotationsID")]
+annotationtab <- annotationtab[,2:ncol(annotationtab)]
+
+save(list = c("mappingAnnotations", "annotations", "annotationtab"), file = "RData/13_PhosphoscoutMapping.Rdata")
+```
+
+```{r}
+load("RData/13_PhosphoscoutMapping.Rdata")
+taban <- annotationtab[!is.na(annotationtab$accessions),]
+```
+
+
+```{r}
+taban$ClusterMerged[is.na(taban$ClusterMerged)] <- "not regulated"
+
+# I split the table per cluster:
+
+lan <- list()
+for (el in unique(taban$ClusterMerged)) {
+        lan[[length(lan)+1]] <- subset(taban, taban$ClusterMerged==el)
+        names(lan)[length(lan)] <- el
+}
+
+lan2 <- list()
+for (i in 1:length(lan)) {
+        tab <- lan[[i]]
+        tab <- tab[!duplicated(tab),]
+        ti <- names(lan)[i]
+        category <- "scansite_predictions"
+        mapping <- tab[,c("GeneID", category)]
+        vec <- as.character(mapping[,2])
+        vec <- sapply(vec, function(x){strsplit(x, ";", fixed = T)})
+        vec <- as.character(unlist(vec))
+        vec <- sapply(vec, function(x){strsplit(x, "site_", fixed = T)[[1]][2]})
+        # For the moment I ignore the scores:
+        vec <- sapply(vec, function(x){strsplit(x, ":", fixed = T)[[1]][1]})
+        vec <- as.character(vec)
+        tabvec <- table(vec)
+        # total <- sum(tabvec)
+        # tabvec <- tabvec / total
+        na <- category
+        mat <- data.frame("Cluster"=rep(ti, length(tabvec)), "temp" = names(tabvec), "number" = as.numeric(tabvec))
+        names(mat)[2] <- category
+        lan2[[length(lan2)+1]] <- mat
+        names(lan2)[length(lan2)] <- paste0(names(lan)[i], " ", category)
+}
+source("RFunctions/RBindList.R")
+tabScansite <- RBindList(lan2)
+
+Kin <-  tabScansite[grepl("kinase", tabScansite$scansite_predictions),]
+hm <- dcast(Kin, Cluster ~ scansite_predictions)
+hm2 <- as.matrix(hm[,2:ncol(hm)])
+row.names(hm2) <- hm[,1]
+totalNum <- rowSums(hm2, na.rm = T)
+for (i in seq_len(nrow(hm2))) {
+  hm2[i,] <- hm2[i,]/totalNum[i]
+}
+d <- dist(t(hm2))
+fit <- hclust(d)
+plot(fit)
+
+gtab <- melt(hm2)
+names(gtab)[1:2] <- c("Cluster", "scansite_predictions")
+gtab$scansite_predictions <- factor(as.character(gtab$scansite_predictions), levels = fit$labels[fit$order])
+gtab$Cluster <- factor(as.character(gtab$Cluster), levels = c("not regulated", sort(as.character(1:9)), sort(as.character(10:13))))
+
+g <- ggplot(gtab, aes(x=Cluster, y = scansite_predictions, size = value, col = value)) + geom_point() + scale_colour_gradient(high="darkred", low="orange") + theme_bw() + ggtitle("Putative kinases from Scansite")
+print(g)
+
+Kin <-  tabScansite[grepl("bind", tabScansite$scansite_predictions),]
+hm <- dcast(Kin, Cluster ~ scansite_predictions)
+hm2 <- as.matrix(hm[,2:ncol(hm)])
+row.names(hm2) <- hm[,1]
+totalNum <- rowSums(hm2, na.rm = T)
+for (i in seq_len(nrow(hm2))) {
+  hm2[i,] <- hm2[i,]/totalNum[i]
+}
+d <- dist(t(hm2))
+fit <- hclust(d)
+plot(fit)
+
+gtab <- melt(hm2)
+names(gtab)[1:2] <- c("Cluster", "scansite_predictions")
+gtab$scansite_predictions <- factor(as.character(gtab$scansite_predictions), levels = fit$labels[fit$order])
+gtab$Cluster <- factor(as.character(gtab$Cluster), levels = c("not regulated", sort(as.character(1:9)), sort(as.character(10:13))))
+
+g2 <- ggplot(gtab, aes(x=Cluster, y = scansite_predictions, size = value, col = value)) + geom_point() + scale_colour_gradient(high="darkred", low="orange") + theme_bw() + ggtitle("Putative binding from Scansite")
+print(g2)
+
+na <- paste0("Figures/ScanSite.pdf")
+pdf(na, useDingbats=FALSE, width = 11.69, height = 8.27)
+print(g)
+print(g2)
+dev.off()
+
+# GO terms:
+
+lan2 <- list()
+for (i in 1:length(lan)) {
+        tab <- lan[[i]]
+        tab <- tab[!duplicated(tab),]
+        ti <- names(lan)[i]
+        category <- "GO_terms"
+        mapping <- tab[,c("GeneID", category)]
+        vec <- as.character(mapping[,2])
+        vec <- sapply(vec, function(x){strsplit(x, "; ", fixed = T)})
+        vec <- as.character(unlist(vec))
+        vec <- sapply(vec, function(x){strsplit(x, "-", fixed = T)[[1]][2]})
+        tabvec <- table(vec)
+        # total <- sum(tabvec)
+        # tabvec <- tabvec / total
+        na <- category
+        mat <- data.frame("Cluster"=rep(ti, length(tabvec)), "temp" = names(tabvec), "number" = as.numeric(tabvec))
+        names(mat)[2] <- category
+        lan2[[length(lan2)+1]] <- mat
+        names(lan2)[length(lan2)] <- paste0(names(lan)[i], " ", category)
+}
+tabScansite <- RBindList(lan2)
+
+Kin <-  tabScansite
+hm <- dcast(Kin, Cluster ~ GO_terms)
+hm2 <- as.matrix(hm[,2:ncol(hm)])
+row.names(hm2) <- hm[,1]
+# I remove the ones not in the regulated sites:
+temp <- hm2[row.names(hm2) != "not regulated",]
+temp <- colSums(temp, na.rm = T)
+hm2 <- hm2[,temp > 0]
+# hm2 <- hm2[,temp > 0]
+# hm2[hm2 < 10] <- NA
+# temp <- colSums(hm2, na.rm = T)
+# hm2 <- hm2[,temp > 0]
+totalNum <- rowSums(hm2, na.rm = T)
+for (i in seq_len(nrow(hm2))) {
+  hm2[i,] <- hm2[i,]/totalNum[i]
+}
+hm2[is.na(hm2)] <- 0
+d <- dist(t(hm2))
+fit <- hclust(d)
+plot(fit)
+
+gtab <- melt(hm2)
+names(gtab)[1:2] <- c("Cluster", "GO_terms")
+gtab$GO_terms <- factor(as.character(gtab$GO_terms), levels = fit$labels[fit$order])
+gtab$Cluster <- factor(as.character(gtab$Cluster), levels = c("not regulated", sort(as.character(1:9)), sort(as.character(10:13))))
+
+g <- ggplot(gtab, aes(x=Cluster, y = GO_terms, size = value, col = value)) + geom_point() + scale_colour_gradient(high="darkred", low="orange") + theme_bw() + ggtitle("GO terms from Scansite")
+print(g)
+
+
+na <- paste0("Figures/GOTerms.pdf")
+pdf(na, useDingbats=FALSE, width = 12, height = 40)
+print(g)
+dev.off()
+```
+
+
+```{r, echo = F}
+sessionInfo()
+```

@@ -335,7 +335,13 @@ There is `r perint`% of the phosphorylation sites (mono and multi) with an avail
 
 A few of the regulated phosphorylation sites have a FC that correlates slightly with the corresponding protein. These are: `r sort(suspiciousProt)`. *This only takes into account the fold changes of the proteins, not the pvalue (reproducibility).*
 
+I add this information to the phosphotable.
 
+```{r}
+phostab$WarningProteinFC <- phostab$GeneID %in% suspiciousProt
+export <- phostab
+save(export, file = "RData/12_PhosphoTableWithProteinWaring.RData")
+```
 
 
 ```{r, echo = F}
