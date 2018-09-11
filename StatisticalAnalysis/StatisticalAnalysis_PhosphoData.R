@@ -247,6 +247,7 @@ while (nLoops > 0) {
   psites <- as.character(unique(row.names(mat2)))
   
   anov <- vector(mode = "list")
+  npTuk <- sort(c("T15-T120", "T30-T120", "T300-T120", "T600-T120", "T30-T15", "T300-T15", "T600-T15", "T300-T30", "T600-T30", "T600-T300", "T15-T0", "T30-T0", "T120-T0", "T300-T0", "T600-T0"))
   
   for (i in 1:length(psites)) {
     el <- psites[i]
@@ -264,18 +265,13 @@ while (nLoops > 0) {
       Tuk <- TukeyHSD(anovA)
       pTuk <- extract_p(Tuk)[order(names(extract_p(Tuk)))]
       if (length(pTuk[[1]]) == 15) {
-        # BestpTuk <- min(as.numeric(pTuk[[1]])) # for a best ptuk corresponding to the minimal pTukey
-        # #BestTimePoint <- names(pTuk[[1]])[pTuk[[1]]==BestpTuk] # for the best time point corresponding to the best pTukey.
-        # btp <- abs(Tuk$`sub$TimePoint`[,1])[Tuk$`sub$TimePoint`[,4]<=0.05]
-        # if (length(btp)==0) { 
-        #   btp <- NA 
-        #   BestTimePoint <- NA
-        # } else {
-        #   btp <- sort(btp, decreasing = T)[1]
-        #   BestTimePoint <- names(btp)
-        # }
-        # vec <- c("psiteID" = el, "pAnova"=pAnova, pTuk[[1]], "BestpTuk" = BestpTuk, "BestTimePoint" = BestTimePoint, "BestFC" = as.numeric(btp))
-        vec <- c("psiteID" = el, "pAnova"=pAnova, pTuk[[1]])
+        vec <- c("psiteID" = el, "pAnova"=pAnova, pTuk[[1]][match(npTuk, names(pTuk[[1]]))])
+        anov[[length(anov)+1]] <- vec
+      } else {
+        pTvec <- pTuk[[1]]
+        pTvec <- c(pTvec, rep(NA, 15-length(pTvec)))
+        names(pTvec)[(length(pTuk[[1]]) + 1):length(pTvec)] <- setdiff(npTuk, names(pTvec))
+        vec <- c("psiteID" = el, "pAnova"=pAnova, pTvec[match(npTuk, names(pTvec))])
         anov[[length(anov)+1]] <- vec
       }
     } 
