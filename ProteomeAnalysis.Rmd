@@ -166,11 +166,10 @@ dev.off()
 
 
 ```{r}
-load(file = "RData/08_StatResults_Phospho.RData")
+load(file = "RData/11_TableClusters.RData")
 load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
 load(file = "RData/05_ParsedTablesNormPSP.RData")
 
-export$SamplePrep <- ifelse(grepl("_Y", export$psiteID, fixed = T) | grepl("+Y", export$psiteID, fixed = T), "pYIP", "TiO2")
 phostab <- export
 rm(export)
 phostab$Accession <- sapply(phostab$psiteID, function(x) {
@@ -341,6 +340,7 @@ I add this information to the phosphotable.
 phostab$WarningProteinFC <- phostab$GeneID %in% suspiciousProt
 export <- phostab
 save(export, file = "RData/12_PhosphoTableWithProteinWaring.RData")
+write.table(export, "SupTables/PhosphoDataWithProtAnalysis.txt", sep = "\t", row.names = F)
 ```
 
 
