@@ -20,7 +20,9 @@ library("viridis")
 library(Rmisc) # multiplot()
 
 colfuncClusters <- colorRampPalette(c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black"))
-colfunclight <- colorRampPalette(c("black", "darkred", "red","yellow"))
+# colfunclight <- colorRampPalette(c("black", "darkred", "red","yellow"))
+
+colfunclight <- colorRampPalette(c("red", "black", "green"))
 ```
 
 # Generation of the input data
@@ -607,11 +609,15 @@ for (i in 1:length(ref)) {
   ord <- as.numeric(ord)
   hm <- hm[,order(ord)]
   ord <- rowMeans(hm, na.rm = T)
+  # Row ordering in function of the amino-acid:
+  sites <- row.names(hm)
+  orderAA <- ifelse(grepl("_Y", sites, fixed = T) | grepl("+Y", sites, fixed = T), 2, 1)
+  hm <- hm[order(orderAA), ]
   
-  heatmap.2(hm[order(ord, decreasing = T),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=colfunclight(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
+  heatmap.2(hm, mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=colfunclight(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
   na <- paste0("Figures/TileMap_Means_Cluster", "_", el, ".pdf")
   pdf(na, useDingbats=FALSE, 8.27, 11.69)
-  heatmap.2(hm[order(ord, decreasing = T),], mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=colfunclight(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
+  heatmap.2(hm, mar = c(7, 10), main = paste0("log2(Mean quan values) of phosphosites in the cluster", el), col=colfunclight(100), cexCol = 0.9, trace = "none", Colv = F, cexRow = 0.35, colsep = c(4, 8, 12, 16, 20), keysize = 1.2, na.color = "grey", na.rm = T, Rowv = F, tracecol = "black", scale = "row")
   dev.off()
 }
 
