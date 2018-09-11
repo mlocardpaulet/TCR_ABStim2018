@@ -226,7 +226,7 @@ while (nLoops > 0) {
   }
   
   ########################################################################
-  # I perform an anova on each phosphorylation site across the 6 time points (only the phosphorylation sites with quantification values in a minimum of two biological replicates). Then, I correct the pvalue with Tukey HSD.
+  # I perform an anova on each phosphorylation site across the 6 time points (only the phosphorylation sites with a minimum of three quantification values in a minimum of two biological replicates, the same time points being considered). Then, I correct the pvalue with Tukey HSD.
   
   df <- mat2
   df <- melt(df)
@@ -252,7 +252,12 @@ while (nLoops > 0) {
     el <- psites[i]
     sub <- subset(df, df$Var1==el)
     subtemp <- sub[!is.na(sub$value),]
-    if (length(table(subtemp$TimePoint)[table(sub$TimePoint) >= 2]) >= 1 & length(unique(sub$TimePoint)) > 3) {
+    # if (length(table(subtemp$TimePoint)[table(sub$TimePoint) >= 2]) >= 1 & length(unique(sub$TimePoint)) > 3) {
+    # I keep only the sites with a  minimum of 2 time points with points from a minimum of 2 biological repeats:
+    #############################################
+    temp <- table(subtemp$TimePoint)
+    temp <- table(temp)
+    if (sum(temp[names(temp) >= 2]) >= 2) {
       anovA <- aov(sub$value~sub$TimePoint, data = sub)
       anovB <- anova(anovA)
       pAnova <- anovB$"Pr(>F)"[1]
