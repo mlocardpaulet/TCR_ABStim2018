@@ -222,7 +222,7 @@ stdv <- median(stdv, na.rm = T)
 
 ################################################################################
 
-nLoops <- 5
+nLoops <- 200
 MatBeforeStat <- vector(mode = "list")
 MatAfterStat <- vector(mode = "list")
 while (nLoops > 0) {
