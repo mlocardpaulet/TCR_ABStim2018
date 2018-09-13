@@ -203,7 +203,10 @@ TFloop <- rowSums(ReplacementMatrix) > 0
 
 # For replacement of missing values:
 ## I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the biological repeats.
-noise <- quantile(matRaw, 0.05, na.rm = T)
+# noise <- quantile(matRaw, 0.05, na.rm = T)
+noise <- sapply(seq_len(ncol(matRaw)), function(x) {
+  quantile(matRaw[,x], 0.03, na.rm = T)
+})
 
 stdv <- vector(mode = "numeric")
 vec <- sapply(colnames(matRaw), function(x) {
@@ -219,7 +222,7 @@ stdv <- median(stdv, na.rm = T)
 
 ################################################################################
 
-nLoops <- 200
+nLoops <- 5
 MatBeforeStat <- vector(mode = "list")
 MatAfterStat <- vector(mode = "list")
 while (nLoops > 0) {
@@ -230,31 +233,62 @@ while (nLoops > 0) {
     matTF <- matRaw[TFloop,]
   }
   mat2 <- matTF
-  vrep <- matrix(rnorm(n = length(matTF),mean = noise, sd = stdv), nrow = nrow(matTF), ncol = ncol(matTF))
+  #  WHEN I USE THE SAME REPLACEMENT VALUE FOR ALL DATA SET:
+  # vrep <- matrix(rnorm(n = length(matTF),mean = noise, sd = stdv), nrow = nrow(matTF), ncol = ncol(matTF))
+  # if (nLoops == 1) {
+  #   hist(vrep, main = "Distribution of the replacement values")
+  #   mat2[ReplacementMatrix==1] <- vrep[ReplacementMatrix==1]
+  #   boxplot(matTF, main = "Raw values", las = 2)
+  #   boxplot(mat2, main = "After replacement of missing values", las = 2)
+  # } else {
+  #   mat2[ReplacementMatrix[TFloop,]==1] <- vrep[ReplacementMatrix[TFloop,]==1]
+  # }
+  # REPLACEMENT VALUE CALCULATED FOR EACH ROW:
+  for (i in seq_len(ncol(mat2))) {
+    vrep <- rnorm(n = length(matTF[,i]),mean = noise[i], sd = stdv)
+    if (nLoops == 1) {
+      mat2[,i][ReplacementMatrix[,i]==1] <- vrep[ReplacementMatrix[,i]==1]
+    } else {
+      mat2[,i][ReplacementMatrix[TFloop,i]==1] <- vrep[ReplacementMatrix[TFloop,i]==1]
+    }
+  }
+  
   if (nLoops == 1) {
-    hist(vrep, main = "Distribution of the replacement values")
-    mat2[ReplacementMatrix==1] <- vrep[ReplacementMatrix==1]
     boxplot(matTF, main = "Raw values", las = 2)
     boxplot(mat2, main = "After replacement of missing values", las = 2)
-  } else {
-    mat2[ReplacementMatrix[TFloop,]==1] <- vrep[ReplacementMatrix[TFloop,]==1]
   }
-  # For each phosphorylation site, I calculate the median value per biological replicate after replacement of missing values. The mean of these values are used for normalisation.
+  
+  # For each phosphorylation site, I calculate the mean value per biological replicate after replacement of missing values. The mean of these values are used for normalisation.
   RowNorm <- rowMeans(mat2, na.rm = T)
   
   vec <- UniqueBRep
-  for (el in unique(vec)) {
-    matel <- mat2[,grepl(el, colnames(mat2))]
-    med <- sapply(seq_len(nrow(matel)), function(x) {
-      median(matel[x,], na.rm = T)
+  matmedkin <- matrix(ncol = length(unique(vec)), nrow = nrow(mat2))
+  for (i in seq_along(unique(vec))) {
+    matel <- mat2[,grepl(unique(vec)[i], colnames(mat2), fixed = T)]
+    matmedkin[,i] <- sapply(seq_len(nrow(matel)), function(x) {
+      mean(as.numeric(as.character(matel[x,])), na.rm = T)
     })
-    norm <- med - RowNorm
-    for (i in seq_len(nrow(mat2))) {
-      matel[i,] <- matel[i,] - norm[i]
-    }
-    mat2[,grepl(el, colnames(mat2))] <- matel
+  }
+  colnames(matmedkin) <- unique(vec)
+  MeanKinetics <- sapply(seq_len(nrow(matmedkin)), function(x) {
+    mean(matmedkin[x,], na.rm = T)
+  })
+  # Calculation of the normalisation factors:
+  for (i in seq_len(nrow(matmedkin))) {
+    matmedkin[i,] <- matmedkin[i,] / MeanKinetics[i]
   }
   
+  for (i in seq_along(unique(vec))) {
+    matel <- mat2[,grepl(unique(vec)[i], colnames(mat2))]
+    for (j in seq_len(nrow(matel))) {
+      matel[j,] <- matel[j,] / matmedkin[j,colnames(matmedkin) == unique(vec)[i]] 
+    }
+    mat2[,grepl(unique(vec)[i], colnames(mat2))] <- matel
+  }
+  if (nLoops == 1) {
+    boxplot(mat2, las = 2, main = "After replicates re-alignment")
+  }
+
   ########################################################################
   # I perform an anova on each phosphorylation site across the 6 time points (only the phosphorylation sites with a minimum of three quantification values in a minimum of two biological replicates, the same time points being considered). Then, I correct the pvalue with Tukey HSD.
   
