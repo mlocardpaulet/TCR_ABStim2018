@@ -142,14 +142,46 @@ ReplacementMatrix <- matrix(ncol = ncol(matRaw), nrow = nrow(matRaw))
 dimnames(ReplacementMatrix) <- dimnames(matRaw)
 TimePoints <- sort(TimePoints)
 
-sumNonNApYIP <- sapply(seq_len(nrow(matRaw[,grepl("pTyr", colnames(matRaw))])), function(x) {
-  length(matRaw[x,grepl("pTyr", colnames(matRaw))][!is.na(matRaw[x,grepl("pTyr", colnames(matRaw))])])
+# I replace missing values only the sites with a  minimum of 3 time points with points from a minimum of 2 biological repeats:
+#############################################
+# For TiO2:
+temp <- matRaw[,grepl("TiO2", colnames(matRaw))]
+tempnames <- gsub("R[12345]_TiO2_", "", colnames(temp))
+tempnames <- gsub("R[12345]_pTyr_", "", tempnames)
+temp[!is.na(temp)] <- 1
+temp[is.na(temp)] <- 0
+colnames(temp) <- tempnames
+temp <- sapply(seq_len(nrow(temp)), function(x) {
+  table(names(temp[x,][temp[x,]==1])) # Number of non-missing values
 })
-sumNonNATiO2 <- sapply(seq_len(nrow(matRaw[,grepl("TiO2", colnames(matRaw))])), function(x) {
-  length(matRaw[x,grepl("TiO2", colnames(matRaw))][!is.na(matRaw[x,grepl("TiO2", colnames(matRaw))])])
+temp <- lapply(temp, table)
+logicalvector <- lapply(temp, function(x) {
+  sum(x[names(x) >= 2]) >= 3
+}) 
+logicalvector <- unlist(logicalvector)
+ReplacementAction <- (sapply(temp, length) > 0) & logicalvector
+names(ReplacementAction) <- row.names(matRaw)
+ReplacementActionTiO2 <- ReplacementAction
+
+# For pYIP:
+temp <- matRaw[,grepl("pTyr", colnames(matRaw))]
+tempnames <- gsub("R[12345]_TiO2_", "", colnames(temp))
+tempnames <- gsub("R[12345]_pTyr_", "", tempnames)
+temp[!is.na(temp)] <- 1
+temp[is.na(temp)] <- 0
+colnames(temp) <- tempnames
+temp <- sapply(seq_len(nrow(temp)), function(x) {
+  table(names(temp[x,][temp[x,]==1])) # Number of non-missing values
 })
-mpYIP <- ncol(matRaw[, grepl("pTyr", colnames(matRaw))])
-mTiO2 <- ncol(matRaw[, grepl("TiO2", colnames(matRaw))])
+temp <- lapply(temp, table)
+logicalvector <- lapply(temp, function(x) {
+  sum(x[names(x) >= 2]) >= 3
+}) 
+logicalvector <- unlist(logicalvector)
+ReplacementAction <- (sapply(temp, length) > 0) & logicalvector
+names(ReplacementAction) <- row.names(matRaw)
+ReplacementActionpTyr <- ReplacementAction
+
 
 vec <- gsub("R[1-5]", "", colnames(matRaw))
 for (el in unique(vec)) {
@@ -158,15 +190,13 @@ for (el in unique(vec)) {
     length(matel[x,][is.na(matel[x,])])
   })
   if (grepl("pTyr", el)) {
-    sumNonNA <- sumNonNApYIP
-    m <- mpYIP
+    ReplacementMatrix[sumNA == ncol(matel) & ReplacementActionpTyr, vec == el] <- 1
   } else {
-    sumNonNA <- sumNonNATiO2
-    m <- mTiO2
+    ReplacementMatrix[sumNA == ncol(matel) & ReplacementActionTiO2, vec == el] <- 1
   }
-  ReplacementMatrix[sumNA == ncol(matel) & sumNonNA > m/2, vec == el] <- 1
 }
 ReplacementMatrix[is.na(ReplacementMatrix)] <- 0
+rm(ReplacementAction)
 
 # Will only loop where replacement is needed:
 TFloop <- rowSums(ReplacementMatrix) > 0
@@ -254,11 +284,11 @@ while (nLoops > 0) {
     sub <- subset(df, df$Var1==el)
     subtemp <- sub[!is.na(sub$value),]
     # if (length(table(subtemp$TimePoint)[table(sub$TimePoint) >= 2]) >= 1 & length(unique(sub$TimePoint)) > 3) {
-    # I keep only the sites with a  minimum of 2 time points with points from a minimum of 2 biological repeats:
+    # I keep only the sites with a  minimum of 3 time points with points from a minimum of 2 biological repeats:
     #############################################
     temp <- table(subtemp$TimePoint)
     temp <- table(temp)
-    if (sum(temp[names(temp) >= 2]) >= 2) {
+    if (sum(temp[names(temp) >= 2]) >= 3) {
       anovA <- aov(sub$value~sub$TimePoint, data = sub)
       anovB <- anova(anovA)
       pAnova <- anovB$"Pr(>F)"[1]
@@ -444,5 +474,7 @@ RegulatedHits <- RegulatedHits[!is.na(RegulatedHits)]
 save(RegulatedHits, file = "RData/RegulatedpSites.Rdata")
 save(export, file = "RData/08_StatResults_Phospho.RData")
 
+# load(file = "RData/RegulatedpSites.Rdata")
+# load(file = "RData/08_StatResults_Phospho.RData")
 
 sessionInfo()
