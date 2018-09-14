@@ -77,7 +77,7 @@ names(df) <- gsub("CCF0141_", "CCF01416_", names(df), fixed = T)
 keep <- cbind(df, keep)
 
 ################################################################################
-# For each replicate independently, I calculate the mean of the injection replicates in each time point:
+# For each replicate independently, I calculate the mean of the injection replicates in each time point. I also calculate the standard deviations in order to estimate the noise when replacing missing values.
 
 vec <- names(df)[2:ncol(df)]
 vec <- sapply(vec, function(x) {
@@ -86,11 +86,24 @@ vec <- sapply(vec, function(x) {
 mat <- matrix(ncol = length(unique(vec)), nrow = nrow(df))
 colnames(mat) <- unique(vec)
 row.names(mat) <- df$psiteID
+matsd <- mat
 for (i in seq_along(unique(vec))) {
   el <- colnames(mat)[i]
   matel <- df[,grepl(el, names(df), fixed = T)]
   mat[,i] <- rowMeans(matel, na.rm = T)
+  matsd[,i] <- sapply(seq_len(nrow(matel)), function(x) {
+    sd(matel[x,], na.rm = T)
+  })
 }
+# I calculate the standard deviation for drawing missing values replacement based on the sites under the 10% quantile of the data set:
+q5 <- sapply(seq_len(ncol(mat)), function(x) {
+  iswithsd <- !is.na(matsd[,x])
+  quantile(mat[iswithsd,x], 0.10, na.rm = T)
+})
+medianStd <- sapply(seq_len(ncol(matsd)), function(x) {
+  median(matsd[,x][as.numeric(as.character(mat[,x])) <= q5[x]], na.rm = T)
+})
+names(medianStd) <- colnames(matsd)
 
 par(mar = c(8, 2, 2, 1))
 boxplot(mat, las = 2, main = "Mean of technical repeats")
@@ -202,23 +215,19 @@ rm(ReplacementAction)
 TFloop <- rowSums(ReplacementMatrix) > 0
 
 # For replacement of missing values:
-## I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the biological repeats.
-# noise <- quantile(matRaw, 0.05, na.rm = T)
+## I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the technical repeats.
 noise <- sapply(seq_len(ncol(matRaw)), function(x) {
-  quantile(matRaw[,x], 0.03, na.rm = T)
+  quantile(matRaw[,x], 0.05, na.rm = T)
 })
-
-stdv <- vector(mode = "numeric")
-vec <- sapply(colnames(matRaw), function(x) {
-  strsplit(x, "_", fixed = T)[[1]][3]
-})
-for (el in vec) {
-  valel <- sapply(seq_len(nrow(matRaw)), function(x) {
-    sd(matRaw[x,grepl(el, colnames(matRaw))], na.rm = T)
-  })
-  stdv <- c(stdv, valel)
-}
-stdv <- median(stdv, na.rm = T)
+# Preparing the standard deviations for the replacement:
+sdnames <- names(medianStd)
+sdnames <- gsub("Log2_.", "", sdnames, fixed = T)
+sdnames <- gsub("Log2_S4_", "", sdnames, fixed = T)
+sdnames <- gsub("Log2_S5_", "", sdnames, fixed = T)
+sdnames <- gsub("CCF[0-9]+", "", sdnames)
+sdnames <- gsub("__", "_", sdnames, fixed = T)
+names(medianStd) <- sdnames
+medianStd <- medianStd[match(colnames(matRaw), names(medianStd))]
 
 ################################################################################
 
@@ -233,19 +242,9 @@ while (nLoops > 0) {
     matTF <- matRaw[TFloop,]
   }
   mat2 <- matTF
-  #  WHEN I USE THE SAME REPLACEMENT VALUE FOR ALL DATA SET:
-  # vrep <- matrix(rnorm(n = length(matTF),mean = noise, sd = stdv), nrow = nrow(matTF), ncol = ncol(matTF))
-  # if (nLoops == 1) {
-  #   hist(vrep, main = "Distribution of the replacement values")
-  #   mat2[ReplacementMatrix==1] <- vrep[ReplacementMatrix==1]
-  #   boxplot(matTF, main = "Raw values", las = 2)
-  #   boxplot(mat2, main = "After replacement of missing values", las = 2)
-  # } else {
-  #   mat2[ReplacementMatrix[TFloop,]==1] <- vrep[ReplacementMatrix[TFloop,]==1]
-  # }
-  # REPLACEMENT VALUE CALCULATED FOR EACH ROW:
+  # REPLACEMENT VALUE:
   for (i in seq_len(ncol(mat2))) {
-    vrep <- rnorm(n = length(matTF[,i]),mean = noise[i], sd = stdv)
+    vrep <- rnorm(n = length(matTF[,i]),mean = noise[i], sd = as.numeric(as.character(medianStd[i])))
     if (nLoops == 1) {
       mat2[,i][ReplacementMatrix[,i]==1] <- vrep[ReplacementMatrix[,i]==1]
     } else {
