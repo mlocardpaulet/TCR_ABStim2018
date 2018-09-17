@@ -43,7 +43,7 @@ For each replicate independently, I calculate the mean of the injection replicat
 
 From there, I run a loop of 200 iterations that contain the following steps:
 
-For each protein, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (biological variance). 
+For each protein, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (technical variance) for each condition. 
 
 For each protein, I normalise the biological replicates using the median of the signal across all the conditions (before replacement of missing values).
 
@@ -51,7 +51,7 @@ I perform an anova on each protein site across the 6 time points. Then, I correc
 
 I calculate the fold changes per time point relative to each other.
 
-The thresholds for a protein to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(2). 
+The thresholds for a protein to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). 
 
 This is performed 200 times, then I keep as variants only the sites that pass these threshold a minimum of 90% of the times. All the fold change values reported are the averages of the 200 iterations.
 
@@ -138,9 +138,10 @@ Heatmap:
 
 ```{r, echo = F}
 colfuncdarkpos <- colorRampPalette(c("black", "red","yellow"))
+colfuncdarkpos <- colorRampPalette(c("green", "black", "red"))
 
 reg <- as.character(Prottab$Protein.IDs[!is.na(Prottab$Regulation) & Prottab$Regulation])
-hm <- as.matrix(Prottab[Prottab$Majority.protein.IDs %in% reg, c(684:707)])
+hm <- as.matrix(Prottab[Prottab$Majority.protein.IDs %in% reg, c(673:696)])
 # Reorder the columns:
 ord <- gsub("R[12354]S", "", colnames(hm))
 ord <- gsub("R[12354]N", "N", ord)
@@ -153,7 +154,7 @@ row.names(hm) <- as.character(Prottab$Majority.protein.IDs[Prottab$Majority.prot
 sep <- c(4, 8, 12, 16, 20)
 na <- paste0("Figures/TileMap_Prot.pdf")
 pdf(na, useDingbats=FALSE, 8.27, 11.69)
-heatmap.2(hm, mar = c(7, 10), main = paste0("LFQ values of proteins"), col=colfuncdarkpos(100), tracecol="black", cexCol = 0.9, scale = "none", trace = "none", Colv = F, cexRow = 0.45, colsep = sep, keysize = 1, na.color = "grey", na.rm = T)
+heatmap.2(hm, mar = c(7, 10), main = paste0("LFQ values of proteins"), col=colfuncdarkpos(100), tracecol="black", cexCol = 0.9, scale = "none", trace = "none", Colv = F, cexRow = 0.3, colsep = sep, keysize = 1, na.color = "grey", na.rm = T)
 dev.off()
 jpeg("Figures/TileMap_Prot.jpg", 8.27, 11.69, units = "in", res = 300) # width and height in inches.
 heatmap.2(hm, mar = c(7, 10), main = paste0("LFQ values of proteins"), col=colfuncdarkpos(100), tracecol="black", cexCol = 0.9, scale = "none", trace = "none", Colv = F, cexRow = 0.45, colsep = sep, keysize = 1, na.color = "grey", na.rm = T)

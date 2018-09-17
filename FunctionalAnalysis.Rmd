@@ -42,7 +42,7 @@ For each replicate independently, I calculate the mean of the injection replicat
 
 From there, I run a loop of 200 iterations that contain the following steps:
 
-For each phosphorylation site, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (biological variance). 
+For each phosphorylation site, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (technical variance) for each condition. 
 
 For each phosphorylation site, I normalise the biological replicates using the median of the signal across all the conditions (before replacement of missing values).
 
@@ -207,13 +207,13 @@ totalNum <- rowSums(hm2, na.rm = T)
 for (i in seq_len(nrow(hm2))) {
   hm2[i,] <- hm2[i,]/totalNum[i]
 }
-d <- dist(t(hm2))
-fit <- hclust(d)
-plot(fit)
+# d <- dist(na.omit(t(hm2)))
+# fit <- hclust(d)
+# plot(fit)
 
 gtab <- melt(hm2)
 names(gtab)[1:2] <- c("Cluster", "scansite_predictions")
-gtab$scansite_predictions <- factor(as.character(gtab$scansite_predictions), levels = fit$labels[fit$order])
+# gtab$scansite_predictions <- factor(as.character(gtab$scansite_predictions), levels = fit$labels[fit$order])
 gtab$Cluster <- factor(as.character(gtab$Cluster), levels = c("not regulated", sort(as.character(1:9)), sort(as.character(10:13))))
 
 g2 <- ggplot(gtab, aes(x=Cluster, y = scansite_predictions, size = value, col = value)) + geom_point() + scale_colour_gradient(high="darkred", low="orange") + theme_bw() + ggtitle("Putative binding from Scansite")
