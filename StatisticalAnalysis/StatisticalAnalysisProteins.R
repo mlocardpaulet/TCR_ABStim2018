@@ -42,22 +42,57 @@ for (el1 in BioRep) {
 names(lmat2) <- BioRep
 
 lm <- list()
+lmsd <- list()
 for (i in 1:length(lmat2)) {
         tab <- lmat2[[i]]
         mat <- matrix(ncol = length(TimePoints), nrow = nrow(tab))
         dimnames(mat)[[2]] <- TimePoints
         dimnames(mat)[[1]] <- tab[,1]
+        matsd <- mat
         j = 1
         for (el in TimePoints) {
                 sub <- tab[,grepl(el, names(tab), fixed = T)]
                 mat[,j] <- rowMeans(sub, na.rm = T)
+                matsd[,j] <- sapply(seq_len(nrow(sub)), function(x) {
+                  sd(sub[x,], na.rm = T)
+                })
                 j <- j+1
         }
         lm[[length(lm)+1]] <- mat
+        lmsd[[length(lmsd)+1]] <- matsd
 }
 names(lm) <- BioRep
+names(lmsd) <- BioRep
+
+lmsd2 <- vector(mode ="list")
+for (i in seq_along(lmsd)) {
+  matsd <- lmsd[[i]]
+  mat <- lm[[i]]
+  q5 <- sapply(seq_len(ncol(mat)), function(x) {
+    iswithsd <- !is.na(matsd[,x])
+    quantile(mat[iswithsd,x], 0.10, na.rm = T)
+  })
+  medianStd <- sapply(seq_len(ncol(matsd)), function(x) {
+    median(matsd[,x][as.numeric(as.character(mat[,x])) <= q5[x]], na.rm = T)
+  })
+  names(medianStd) <- colnames(matsd)
+  lmsd2[[i]] <- medianStd
+}
+
+names(lmsd2) <- names(lm)
+rm(lmsd)
 
 lm <- lapply(lm, function(x) x[,c(1, 5, 4, 3, 2, 6)])
+lmsd2 <- lapply(lmsd2, function(x) x[c(1, 5, 4, 3, 2, 6)])
+
+# Will only loop where replacement is needed:
+TFloop <- vector(mode = "list")
+for (i in seq_along(lm)) {
+  mat <- lm[[i]]
+  TFloop[[i]] <- sapply(seq_len(nrow(mat)), function(x) {
+    length(mat[x,][is.na(mat[x,])]) > 0
+  })
+}
 
 ################################################################################
 ###### Statistical analysis
@@ -79,24 +114,33 @@ while (nLoops > 0) {
         lmat3 <- list()
         par(mfrow=c(1, length(lm)))
         for (j in 1:length(lm)) {
-                mat <- lm[[j]]
-                noise <- quantile(mat, 0.05, na.rm = T)
-                stdv <- sapply(1:nrow(mat), function(x) sd(as.numeric(mat[x,]), na.rm = T))
-                m <- rowMeans(mat, na.rm = T)
-                stdv <- mean(stdv[m<=noise], na.rm = T)
-                mat2 <- mat
-                vrep <- matrix(runif(length(mat),(noise-stdv),(noise+stdv)), nrow = nrow(mat), ncol = ncol(mat))
-                mat2[is.na(mat)] <- vrep[is.na(mat)]
-                lmat2[[length(lmat2)+1]] <- mat2
-                val <- rowMeans(mat, na.rm = T)
-                lmat3[[length(lmat3)+1]] <- data.frame(mat, "NormalisationValue"=val)
-                #title <- paste0(names(lm)[j], ": quan values after replacement MV")
-                #boxplot(mat2, main = title, las = 2)
+          mat <- lm[[j]]
+          noisevec <- sapply(seq_len(ncol(mat)), function(x) {
+            quantile(mat[,x], 0.05, na.rm = T)
+          })
+          if (nLoops > 1) {
+            mat <- mat[TFloop[[j]],]
+          }
+          stdv <- lmsd2[[j]]
+          mat2 <- mat
+          for (i in seq_len(ncol(mat))) {
+            noise <- noisevec[i]
+            stdvi <- stdv[i]
+            vrep <- rnorm(length(mat[,i]), mean = noise, sd = stdvi)
+            mat2[,i][is.na(mat[,i])] <- vrep[is.na(mat[,i])]
+          }
+          lmat2[[length(lmat2)+1]] <- mat2
+          val <- rowMeans(mat2, na.rm = T)
+          lmat3[[length(lmat3)+1]] <- data.frame(mat, "NormalisationValue"=val)
+          if (nLoops == 1) {
+            title <- paste0(names(lm)[j], ": quan values after replacement MV")
+            boxplot(mat2, main = title, las = 2)
+          }
         }
-        names(lmat2) <- names(lm) # lmat3 contains the tables with no missing values.
-        names(lmat3) <- names(lm) # lmat3 contains the tables with no missing values.
+        names(lmat2) <- names(lm) # lmat2 contains the tables with no missing values.
+        names(lmat3) <- names(lm) # lmat3 contains the raw values and normalisation values.
         
-        # For each phosphorylation site, I calculate the mean value per biological replicate after replacement of missing values. The mean of these values are used for normalisation.
+        # For each protein, I calculate the mean value per biological replicate after replacement of missing values. The mean of these values are used for normalisation.
         
         l <- list()
         for (i in 1:length(lmat3)) {
@@ -111,13 +155,16 @@ while (nLoops > 0) {
         }
         normtab <- as.data.frame(normtab, stringsAsFactors = F)
         normtab[,2] <- as.numeric(normtab[,2])
-        NormVal1 <- sapply(unique(normtab$na), function(x) normtab[normtab$na==x,2])
-        NormVal2 <- colMeans(NormVal1, na.rm = T)
+        NormVal1 <- lapply(unique(normtab$na), function(x) normtab[normtab$na==x,2])
+        names(NormVal1) <- unique(normtab$na)
+        NormVal2 <- sapply(NormVal1, function(x) {
+          mean(as.numeric(as.character(x)), na.rm = T)
+        })
         l2 <- l
         par(mfrow=c(1,length(l)))
         for (i in 1:length(l)) {
                 tab <- as.data.frame(l[[i]], stringsAsFactors = F)
-                normval <- NormVal2[match(tab$na, names(NormVal2))]
+                normval <- NormVal2[match(tab$na, names(NormVal1))]
                 vec2 <- as.numeric(tab$vec)-normval
                 l2[[i]] <- data.frame(tab, "NormValue"=vec2)
                 #boxplot(vec2, main = paste0("Normalisation values of ", names(l)[i]))
@@ -143,7 +190,8 @@ while (nLoops > 0) {
         for (i in 1:length(lmat3)) {
                 tab <- lmat3[[i]][,1:6]
                 dimnames(tab)[[2]] <- paste0(names(lm)[i], dimnames(tab)[[2]])
-                tab <- data.frame("Majority.protein.IDs" = dimnames(lm[[i]])[[1]], tab)
+                # tab <- data.frame("Majority.protein.IDs" = dimnames(lm[[i]])[[1]], tab)
+                tab <- data.frame("Majority.protein.IDs" = row.names(tab), tab)
                 lmat4[[i]] <- tab
         }
         names(lmat4) <- names(lmat3)
@@ -151,9 +199,9 @@ while (nLoops > 0) {
         for (i in 2:length(lmat4)) {
                 mer <- merge(mer, lmat4[[i]], by = "Majority.protein.IDs", all = T)
         }
-        # I remove the rows with only NA values in the columns 684:707:
-        k <- sapply(1:nrow(mer), function(x) {length(mer[x,684:707][is.na(mer[x,684:707])])})
-        mer <- mer[k!=24,]
+        # I remove the rows with less than 12 values in the columns 684:707:
+        k <- sapply(1:nrow(mer), function(x) {length(mer[x,684:707][!is.na(mer[x,684:707])])})
+        mer <- mer[k > 12,]
         
         
         ########################################################################
@@ -239,7 +287,7 @@ while (nLoops > 0) {
         }
         mer2 <- cbind(mer2, "BestFC"=BestFC)
         # SIGNIFICATIVITY THRESHOLD:
-        mer2$Regulation <- ifelse(!is.na(mer2$BestpTuk) & (as.numeric(as.character(mer2$BestpTuk))<=0.05) & abs(as.numeric(as.character(mer2$BestFC))>=1 & (as.numeric(as.character(mer2$pAnova))<=0.05)), "Regulated", "Not regulated")
+        mer2$Regulation <- ifelse(!is.na(mer2$BestpTuk) & (as.numeric(as.character(mer2$BestpTuk))<=0.05) & abs(as.numeric(as.character(mer2$BestFC))>=log2(1.5) & (as.numeric(as.character(mer2$pAnova))<=0.05)), "Regulated", "Not regulated")
         
         finalListAnova[[length(finalListAnova)+1]] <- mer2
         
@@ -253,24 +301,44 @@ while (nLoops > 0) {
 nLoops <- length(finalListAnova)
 
 # Phosphosites significantly regulated across 90% of the statistical tests performed:
-reg <- sapply(finalListAnova, function(x) x[,"Regulation"])
-reg <- reg=="Regulated"
+reg <- lapply(finalListAnova, function(x) x[,"Regulation"])
+for (i in seq_along(reg)) {
+  names(reg[[i]]) <- finalListAnova[[i]]$Majority.protein.IDs
+}
 threshold <- .9*nLoops # 90% of the draws
-reg1 <- rowSums(reg)
-reg <- reg1>=threshold
+na <- finalListAnova[[length(finalListAnova)]]$Majority.protein.IDs
+reg1 <- data.frame("Majority.protein.IDs" = na, "1" = ifelse(reg[[1]][match(na, names(reg[[1]]))] == "Regulated", 1, 0))
+for (i in (2 : length(reg))) {
+  reg1 <- cbind(reg1, ifelse(reg[[i]][match(na, names(reg[[i]]))] == "Regulated", 1, 0))
+}
+names(reg1)[3:ncol(reg1)] <-  as.numeric(2 : length(reg))
+# reg1[is.na(reg1)] <- 0
+reg <- reg1
+reg1 <- rowSums(reg[2:ncol(reg)])
+reg1[is.na(reg$X1)] <- reg[is.na(reg$X1), (nLoops + 1)] * nLoops
+reg <- reg1>=threshold & !is.na(reg1)
 reg1 <- reg1/nLoops
-names(reg1) <- as.character(finalListAnova[[1]]$Majority.protein.IDs)
+names(reg1) <- names(reg)
 
 
 lmat <- lapply(finalListAnova, function(x) x[,c(2:42, 44:59)])
 lmat <- lapply(lmat, apply, 2, as.numeric)
-finalMat <- matrix(ncol = ncol(lmat[[1]]), nrow = nrow(lmat[[1]]))
-dimnames(finalMat) <- list(mer2$Majority.protein.IDs, dimnames(lmat[[1]])[[2]])
-for (i in 1:nrow(finalMat)) {
-        mat <- sapply(lmat, function(x) x[i,])
-        finalMat[i,] <- rowMeans(mat, na.rm = T)
+for (i in seq_along(lmat)) {
+  row.names(lmat[[i]]) <- finalListAnova[[i]]$Majority.protein.IDs
 }
-finalMat <- data.frame("Majority.protein.IDs" = mer2$Majority.protein.IDs, finalMat, "Regulation" = reg)
+finalMat <- matrix(ncol = ncol(lmat[[nLoops]]), nrow = nrow(lmat[[nLoops]]))
+colnames(finalMat) <- colnames(lmat[[1]])
+row.names(finalMat) <- finalListAnova[[nLoops]]$Majority.protein.IDs
+source("RFunctions/RBindList.R")
+for (i in 1:nrow(finalMat)) {
+  proti <- row.names(finalMat)[i]
+  mat <- lapply(lmat, function(x) {
+    x[row.names(x) == proti,]
+  })
+  mat <- t(RBindList(mat))
+  finalMat[i,] <- rowMeans(mat, na.rm = T)
+}
+finalMat <- data.frame("Majority.protein.IDs" = row.names(finalMat), finalMat, "Regulation" = reg[match(row.names(finalMat), names(reg))])
 
 finalMat <- data.frame(finalMat, "FrequenceSignificance" = as.numeric(reg1)[match(as.character(finalMat$Majority.protein.IDs), names(reg1))])
 finalMat <- finalMat[,!grepl("BestpTuk", names(finalMat), fixed = T) & !grepl("BestFC", names(finalMat), fixed = T)]
@@ -294,12 +362,14 @@ export <- merge(prot, finalMat, by = "Majority.protein.IDs", all = T)
 #export <- data.frame(cbind(export, "MaxLocalisationScore" = mer$MaxLocalisationScore))
 
 # Issues with openning the table in excel. There are some "\n":
-mat <- export[,673:683]
-mat <- apply(mat, 2, as.character)
-mat <- gsub("\n", "", mat, fixed = T)
-mat <- gsub("\t", "", mat, fixed = T)
-mat <- gsub(";", "|", mat, fixed = T)
-export[,673:683] <- mat
+# mat <- export[,673:683]
+# mat <- apply(mat, 2, as.character)
+# mat <- gsub("\n", "", mat, fixed = T)
+# mat <- gsub("\t", "", mat, fixed = T)
+# mat <- gsub(";", "|", mat, fixed = T)
+# mat <- gsub(",", "|", mat, fixed = T)
+# export[,673:683] <- mat
+export <- export[,c(1:672,684:743)]
 write.table(export, "SupTables/ProtfinalStat.txt", row.names = F, sep = "\t", quote = F)
 write.csv(export, "SupTables/ProtfinalStat.csv", row.names = F)
 
