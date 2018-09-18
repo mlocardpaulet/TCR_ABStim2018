@@ -287,7 +287,7 @@ while (nLoops > 0) {
         }
         mer2 <- cbind(mer2, "BestFC"=BestFC)
         # SIGNIFICATIVITY THRESHOLD:
-        mer2$Regulation <- ifelse(!is.na(mer2$BestpTuk) & (as.numeric(as.character(mer2$BestpTuk))<=0.05) & abs(as.numeric(as.character(mer2$BestFC))>=log2(1.5) & (as.numeric(as.character(mer2$pAnova))<=0.05)), "Regulated", "Not regulated")
+        mer2$Regulation <- ifelse(!is.na(mer2$BestpTuk) & (as.numeric(as.character(mer2$BestpTuk))<=0.05) & abs(as.numeric(as.character(mer2$BestFC))>=log2(1.75) & (as.numeric(as.character(mer2$pAnova))<=0.05)), "Regulated", "Not regulated")
         
         finalListAnova[[length(finalListAnova)+1]] <- mer2
         
