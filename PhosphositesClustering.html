@@ -123,7 +123,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Functional analysis of regulated psites upon TCR stimulation</h1>
 <h4 class="author"><em>Marie Locard-Paulet</em></h4>
-<h4 class="date"><em>Mon Sep 17 13:22:14 2018</em></h4>
+<h4 class="date"><em>Mon Sep 17 16:31:02 2018</em></h4>
 
 </div>
 
@@ -145,7 +145,7 @@ $(document).ready(function () {
 <p>I only keep the phosphorylation sites that have a minimum of 3 time points with values in the same 2 replicates.</p>
 <p>I perform an anova on each phosphorylation site across the 6 time points. Then, I correct the pvalue with Tukey HSD.</p>
 <p>I calculate the fold changes per time point relative to each other.</p>
-<p>The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition, and 5 time points.</p>
+<p>The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition.</p>
 <p>This is performed 200 times, then I keep as variants only the sites that pass these threshold a minimum of 90% of the times. All the fold change values reported are the averages of the 200 iterations.</p>
 </div>
 </div>

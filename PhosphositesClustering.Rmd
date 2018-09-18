@@ -52,7 +52,7 @@ I perform an anova on each phosphorylation site across the 6 time points. Then, 
 
 I calculate the fold changes per time point relative to each other.
 
-The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition, and 5 time points.
+The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition.
 
 This is performed 200 times, then I keep as variants only the sites that pass these threshold a minimum of 90% of the times. All the fold change values reported are the averages of the 200 iterations.
 
