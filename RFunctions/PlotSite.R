@@ -91,4 +91,5 @@ PlotSiteYLim <- function(psites, tab, ylim = c(10,40)) { # psites is the vector 
 # psites <- as.character(tab$psiteID[keep])
 # PlotSite(psites, tab)
 # PlotSite(tab$psiteID[tab$GeneID %in% c("Cd5_Y452")], tab)
-PlotSite(c("Q3V3E1_Y9"), tab)
+# PlotSite(c("Q3V3E1_Y9"), tab)
+# PlotSite(tab$psiteID[grepl("Ubash", tab$GeneID)], tab)

@@ -125,7 +125,7 @@ save(keep, file = "RData/07_TableBeforeStat.RData")
 # For this analysis I generate a loop. This allows the repetition of the entire analysis and we considere regulated the phosphorylation sites that are significantly regulated 90% of the times.
 ################################################################################
 
-# Create a table that will be used to choose where to replace missing values. The idea is to replace missing values only if there are no values measured in any biological replicate (0 = no replacement, 1 = replacement needed):
+# Create a table that will be used to choose where to replace missing values. The idea is to replace missing values only if there are no values measured in any biological replicate or only one value in one of the biological repeats (0 = no replacement, 1 = replacement needed):
 
 BRep <- colnames(mat)
 BRep <- gsub("MeanTech_.", "", BRep, fixed = T)
@@ -171,7 +171,7 @@ temp <- lapply(temp, table)
 logicalvector <- lapply(temp, function(x) {
   sum(x[names(x) >= 2]) >= 3
 }) 
-logicalvector <- unlist(logicalvector)
+logicalvector <- unlist(logicalvector) # I replace missing values only the sites with a  minimum of 3 time points with points from a minimum of 2 biological repeats.
 ReplacementAction <- (sapply(temp, length) > 0) & logicalvector
 names(ReplacementAction) <- row.names(matRaw)
 ReplacementActionTiO2 <- ReplacementAction
@@ -199,14 +199,15 @@ ReplacementActionpTyr <- ReplacementAction
 vec <- gsub("R[1-5]", "", colnames(matRaw))
 for (el in unique(vec)) {
   matel <- matRaw[,vec == el]
-  sumNA <- sapply(seq_len(nrow(matel)), function(x) {
-    length(matel[x,][is.na(matel[x,])])
+  sumNonNA <- sapply(seq_len(nrow(matel)), function(x) {
+    length(matel[x,][!is.na(matel[x,])])
   })
   if (grepl("pTyr", el)) {
-    ReplacementMatrix[sumNA == ncol(matel) & ReplacementActionpTyr, vec == el] <- 1
+    ReplacementMatrix[sumNonNA <= 1 & ReplacementActionpTyr, vec == el] <- 1
   } else {
-    ReplacementMatrix[sumNA == ncol(matel) & ReplacementActionTiO2, vec == el] <- 1
+    ReplacementMatrix[sumNonNA <= 1 & ReplacementActionTiO2, vec == el] <- 1
   }
+  ReplacementMatrix[, vec == el][!is.na(matel)] <- 0 # Do not remplace measured values
 }
 ReplacementMatrix[is.na(ReplacementMatrix)] <- 0
 rm(ReplacementAction)
@@ -413,7 +414,7 @@ while (nLoops > 0) {
   
   
   # SIGNIFICATIVITY THRESHOLD:
-  mer$Regulation <- ifelse(!is.na(mer$BestFC) & abs(as.numeric(as.character(mer$BestFC))) > log2(1.5) & (as.numeric(as.character(mer$pAnova))<=0.05), "Regulated", "Not regulated")
+  mer$Regulation <- ifelse(!is.na(mer$BestFC) & abs(as.numeric(as.character(mer$BestFC))) > log2(1.75) & (as.numeric(as.character(mer$pAnova))<=0.05), "Regulated", "Not regulated")
   
   MatAfterStat[[length(MatAfterStat)+1]] <- mer
   
