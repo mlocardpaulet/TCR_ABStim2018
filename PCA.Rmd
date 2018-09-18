@@ -38,11 +38,14 @@ row.names(mat) <- tab$psiteID
 # Keep only the regulated sites:
 mat <- mat[row.names(mat) %in% tab$psiteID[tab$Regulation == "TRUE"],]
 
-# Imputation of missing data:
-nb <- estim_ncpPCA(mat, scale = F)
-comp <- imputePCA(mat, ncp = 2, scale = F)
+# # Imputation of missing data:
+# nb <- estim_ncpPCA(mat, scale = F)
+# comp <- imputePCA(mat, ncp = 2, scale = F)
+# 
+# pca <- prcomp(comp$completeObs, scale = F, center = F)
 
-pca <- prcomp(comp$completeObs, scale = F, center = F)
+# I don't have missing values so:
+pca <- prcomp(mat, scale = F, center = F)
 plotSDev(pca)
 plotGenes(pca)
 
