@@ -42,9 +42,9 @@ For each replicate independently, I calculate the mean of the injection replicat
 
 From there, I run a loop of 200 iterations that contain the following steps:
 
-For each phosphorylation site, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (technical variance) per condition. 
+For each phosphorylation site, when it is not measured in any biological replicate for a condition (or only one biological replicate), I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (technical variance) per condition. 
 
-For each phosphorylation site, I normalise the biological replicates using the mean of the signal across all the conditions (before replacement of missing values).
+For each phosphorylation site, I normalise the biological replicates using the mean of the signal across all the conditions (after replacement of missing values).
 
 I only keep the phosphorylation sites that have a minimum of 3 time points with values in the same 2 replicates.
 
@@ -52,7 +52,7 @@ I perform an anova on each phosphorylation site across the 6 time points. Then, 
 
 I calculate the fold changes per time point relative to each other.
 
-The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition.
+The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.75). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition.
 
 This is performed 200 times, then I keep as variants only the sites that pass these threshold a minimum of 90% of the times. All the fold change values reported are the averages of the 200 iterations.
 
@@ -345,7 +345,7 @@ set.seed(300)
 for (i in 11) {
         print(paste0("Number of clusters: ", i))
         target <- i
-        clusres <- tightClust::tight.clust(clusmat, target = i, k.min = 3, resamp.num = 100, random.seed = 300) # recommanded k.min = target + 5
+        clusres <- tightClust::tight.clust(clusmat, target = i, k.min = 4, resamp.num = 100, random.seed = 300) # recommanded k.min = target + 5
         clusmat <- clusres[[1]]
         gtab <- melt(data.frame(clusmat[,1:6], "psiteID" = row.names(clusmat)), varnames = c("psiteID", "Cluster"))
         gtab$Cluster <- clusres[[2]][match(gtab$psiteID, row.names(clusmat))]
@@ -366,7 +366,7 @@ Graphical representation of the different clusters with real values:
 *Here I re-ordered the clusters for the paper based on their kinetic shape and not the number of site:* 
 
 ```{r, eval = T}
-mapping <- data.frame("ClusteringOuptut" = sort(unique(clusres$cluster)), "NewOrdering" = c(12,3,4,2,1,8,9,7,6,5,11,10))
+mapping <- data.frame("ClusteringOuptut" = sort(unique(clusres$cluster)), "NewOrdering" = c(12,1:11))
 clusres$cluster <- mapping$NewOrdering[match(clusres$cluster, mapping$ClusteringOuptut)]
 ```
 
@@ -499,31 +499,31 @@ ggplot(gtab1, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat 
 kable(gtab1)
 gtab2 <- cbind(gtab1, "AminoAcid" = rep("pY", nrow(gtab1)))
 # For serines:
-gtab1 <- as.data.frame(table(gtab$ClusterMerged[gtab$aa=="S" & gtab$ClusterMerged != "NoRegulation"]))
-gtab1 <- gtab1[order(as.numeric(as.character(gtab1$Var1))),]
-gtab1$Var1 <- factor(gtab1$Var1, levels = as.character(gtab1$Var1))
-gtab1$pos <- labposPie(gtab1$Freq)
-gtab1$facet <- ifelse(gtab1$Var1 %in% c(1, 2, 3, 4), "up", "down")
-gtab1$facet[gtab1$Var1 == 12] <- "Mixed"
-g2 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pS") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
-ggplot(gtab1, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pS") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
-kable(gtab1) 
-gtab2 <- rbind(gtab2, cbind(gtab1, "AminoAcid" = rep("pS", nrow(gtab1))))
+gtab3 <- as.data.frame(table(gtab$ClusterMerged[gtab$aa=="S" & gtab$ClusterMerged != "NoRegulation"]))
+gtab3 <- gtab3[order(as.numeric(as.character(gtab3$Var1))),]
+gtab3$Var1 <- factor(gtab3$Var1, levels = as.character(gtab3$Var1))
+gtab3$pos <- labposPie(gtab3$Freq)
+gtab3$facet <- ifelse(gtab3$Var1 %in% c(1, 2, 3, 4), "up", "down")
+gtab3$facet[gtab3$Var1 == 12] <- "Mixed"
+g2 <- ggplot(gtab3, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pS") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab3$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+ggplot(gtab3, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pS") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab3$Var1))]) + theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
+kable(gtab3) 
+gtab2 <- rbind(gtab2, cbind(gtab3, "AminoAcid" = rep("pS", nrow(gtab3))))
 # For threonines:
-gtab1 <- as.data.frame(table(gtab$ClusterMerged[gtab$aa=="T" & gtab$ClusterMerged != "NoRegulation"]))
-gtab1 <- gtab1[order(as.numeric(as.character(gtab1$Var1))),]
-gtab1$Var1 <- factor(gtab1$Var1, levels = as.character(gtab1$Var1))
-gtab1$pos <- labposPie(gtab1$Freq)
-gtab1$facet <- ifelse(gtab1$Var1 %in% c(1, 2, 3, 4), "up", "down")
-gtab1$facet[gtab1$Var1 == 12] <- "Mixed"
-g3 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pT") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
-ggplot(gtab1, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pT") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
-kable(gtab1)
-gtab2 <- rbind(gtab2, cbind(gtab1, "AminoAcid" = rep("pT", nrow(gtab1))))
+gtab4 <- as.data.frame(table(gtab$ClusterMerged[gtab$aa=="T" & gtab$ClusterMerged != "NoRegulation"]))
+gtab4 <- gtab4[order(as.numeric(as.character(gtab4$Var1))),]
+gtab4$Var1 <- factor(gtab4$Var1, levels = as.character(gtab4$Var1))
+gtab4$pos <- labposPie(gtab4$Freq)
+gtab4$facet <- ifelse(gtab4$Var1 %in% c(1, 2, 3, 4), "up", "down")
+gtab4$facet[gtab4$Var1 == 12] <- "Mixed"
+g3 <- ggplot(gtab4, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pT") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab4$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+ggplot(gtab4, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pT") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab4$Var1))]) + theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
+kable(gtab4)
+gtab2 <- rbind(gtab2, cbind(gtab4, "AminoAcid" = rep("pT", nrow(gtab4))))
 
 gtab2$group <- paste0(gtab2$Var1, gtab2$`AminoAcid`)
-gtab2$facet <- ifelse(gtab2$Var1 %in% c(1, 2, 3, 4), "up", "down")
-gtab2$facet[gtab2$Var1 == 12] <- "Mixed"
+
+
 gtab2 <- gtab2[!is.na(gtab2$Var1),]
 
 # g4 <- ggplot(gtab2, aes(x = group, y = RelativeToTot, fill = Var1, group = group)) +  geom_bar(width = 1, stat = "identity", position = "dodge", col = "grey80")  + ggtitle("Relative quantities per cluster") + scale_fill_manual(values = colfuncClusters(13)[gtab1$Var1]) + theme_minimal()  + facet_wrap(.~facet, scales = "free_x")
