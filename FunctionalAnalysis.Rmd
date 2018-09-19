@@ -33,8 +33,6 @@ To generate the phosphosite IDs, I keep all possible protein identifications (Un
 
 ## Filters and statistical analysis
 
-Each data set (TiO2 and pY-IP) is analysed independently.
-
 See the data preparation in the document `DataPreparation.html`.
 
 I log2-transform the data set.
@@ -42,15 +40,17 @@ For each replicate independently, I calculate the mean of the injection replicat
 
 From there, I run a loop of 200 iterations that contain the following steps:
 
-For each phosphorylation site, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (technical variance) for each condition. 
+For each phosphorylation site, when it is not measured in any biological replicate for a condition (or only one biological replicate), I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (technical variance) per condition. 
 
-For each phosphorylation site, I normalise the biological replicates using the median of the signal across all the conditions (before replacement of missing values).
+For each phosphorylation site, I normalise the biological replicates using the mean of the signal across all the conditions (after replacement of missing values).
 
-I perform an anova on each phosphorylation site across the 6 time points (only the phosphorylation sites with quantification values in a minimum of two biological replicates). Then, I correct the pvalue with Tukey HSD. 
+I only keep the phosphorylation sites that have a minimum of 3 time points with values in the same 2 replicates.
+
+I perform an anova on each phosphorylation site across the 6 time points. Then, I correct the pvalue with Tukey HSD. 
 
 I calculate the fold changes per time point relative to each other.
 
-The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition, and 5 time points.
+The thresholds for a phosphorylation site to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.75). I only keep the pvalue and FC for the comparisons where there are a minimum of 2 points per condition.
 
 This is performed 200 times, then I keep as variants only the sites that pass these threshold a minimum of 90% of the times. All the fold change values reported are the averages of the 200 iterations.
 

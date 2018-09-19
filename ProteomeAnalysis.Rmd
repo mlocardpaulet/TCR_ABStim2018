@@ -43,7 +43,7 @@ For each replicate independently, I calculate the mean of the injection replicat
 
 From there, I run a loop of 200 iterations that contain the following steps:
 
-For each protein, when it is not measured in any biological replicate for a condition, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (technical variance) for each condition. 
+For each protein, I replace missing values with a random value generated around the 5% quantile of the intensities for each condition, using the standard deviation of the dataset (technical variance) for each condition. 
 
 For each protein, I normalise the biological replicates using the median of the signal across all the conditions (before replacement of missing values).
 
@@ -51,7 +51,7 @@ I perform an anova on each protein site across the 6 time points. Then, I correc
 
 I calculate the fold changes per time point relative to each other.
 
-The thresholds for a protein to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.5). 
+The thresholds for a protein to be regulated is having a pvalue of the Anova under or equal to 0.05, and the best pvalue from Tukey under or equal to 0.05 with a corresponding absolute log2-transformed fold change above or equal to log2(1.75). 
 
 This is performed 200 times, then I keep as variants only the sites that pass these threshold a minimum of 90% of the times. All the fold change values reported are the averages of the 200 iterations.
 
@@ -83,7 +83,7 @@ labs <- rep(NA, nrow(tab))
 labs[tab$Majority.protein.IDs %in% labels] <- labels
 gtab <- data.frame(tab, "y"=-(log10(as.numeric(as.character(tab$pAnova)))), "col" = ifelse(tab$Regulation, "regulated", "not regulated"), "x" = vec, "Prot" = labs)
 ti <- paste0("Volcano anova for the proteins")
-g <- ggplot(data = gtab, aes(x = x, y = y, col = col, label = Prot)) + geom_point(alpha = 0.5, size = 2) + scale_color_manual(values = c("black", "red")) + ylab("-log10(pvalue anova)") + ggtitle(ti) + geom_text_repel() + theme_bw()
+g <- ggplot(data = gtab, aes(x = x, y = y, col = col, label = Prot)) + geom_point(alpha = 0.5, size = 2) + scale_color_manual(values = c("black", "red")) + ylab("-log10(pvalue anova)") + ggtitle(ti) + theme_bw()# + geom_text_repel()
 print(g)
 na <- paste0("Figures/Anova_Proteins.pdf")
 pdf(na, useDingbats=FALSE, 11.69, 8.27)
