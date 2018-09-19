@@ -24,6 +24,13 @@ Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 - "04_ParsedTablesPSP.RData": Quantification data with the PhosphoSitePlus ID.
 - "05_ParsedTablesNormPSP.RData": Data normalised for technical instrument variation using the intensities of the iRT. Also, I removed some runs that overperformed. 
 - "06_Prottab.RData": Protein data (raw).
+- "07_TableBeforeStat.RData": The normalised and QC data of the phosphoproteome before statistical analysis.
+- "08_StatResultsPhospho.RData": The output of the statistical analysis of the phosphoproteome.
+- "09_Correlations.RData": The output of the correlation analysis of the significantly regulated sites.
+- "10_Cluster.RData": The clusters of phospho-kinetics (only include the significantly regulated sites).
+- "11_TableClusters.RData": Phosphoproteomic data with the results of the statistical analysis and the clustering.
+- "12_PhosphoTableWithProteinWaring.RData": Phosphoproteomic data with the results of the statistical analysis and the clustering. I added a final column that indicates if the protein FC correlates with the phosphorylation sites FC on this protein.
+- "13_PhosphoscoutMapping.RData": Mapping of the phospho-regulated sites to the PhosphoScout database.
 
 `"KEAEnrichments"` contains the results of phosphorylation site specific enrichment using [KEA](http://www.maayanlab.net/KEA2/#) the 4th September 2018 (no background). I saved the enrichment results with the following labels:
 - "KS" for Literature Based Kinase-Substrate Library with Phosphosites, followed by the cluster number.
@@ -39,8 +46,10 @@ Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 
 The data was prepared and normalised with the scripts in "DataPreparation.Rmd/html" with some quality control. See "DataPreparation_Proteome.Rmd/html" for the quality control of the proteins data.
 
-The scripts used for the statistical testing of the data (including kinetics normalisation and replacement of missing values) are in the folder `StatisticalAnalysis`. IT CONTAINS THE MANUAL CORRECTION OF SEVERAL NAMING ISSUES IN THE ORIGINAL TABLES.
+The scripts used for the statistical testing of the data (including kinetics normalisation and replacement of missing values) are in the folder `StatisticalAnalysis`. IT CONTAINS THE MANUAL CORRECTION OF SEVERAL NAMING ISSUES IN THE ORIGINAL TABLES. The same folder contains the script used for the statistical analysis of the proteome.
 
 The clustering of the phosphorylation sites is performed in the document `PhoshositesClustering`. I chose to perform tight clustering on the mean values of the loops. I scaled the kinetics (row-wise).
 
-I made a PCA plot of the regulated phosphorylation sites in the `PCA` document
+I made a PCA plot of the regulated phosphorylation sites in the `PCA` document.
+
+I performed a pairwise correlation analysis on the regulated phosphorylation sites. This is in the folder `CorrelationAnalysis`.

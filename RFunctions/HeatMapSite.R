@@ -3,7 +3,7 @@
 # tab <- export
 # tab$Kinase <- PSP$Kinase[match(tab$psiteID, PSP$ID)]
 
-coloursHM <- colorRampPalette(c("red", "black", "green"))
+coloursHM <- colorRampPalette(c("green", "black", "red"))
 require(reshape2)
 require(gplots)
 
@@ -30,20 +30,29 @@ PlotHM <- function(psites, tab, save = T) { # psites is the vector of phosphosit
       row.names(el) <- na
       regulation <- tab$Regulation[match(na, tab$GeneID)]
       if (sum(grepl("TiO2", colnames(el))) > 0) {
-        heatmap.2(el, col = coloursHM(100), na.color = "grey30", colsep = c(4, 8, 12, 16, 20), trace = "n", margins = c(8,8))
+        colnames(el) <- gsub("R[12345]_TiO2_", "", colnames(el))
+        colnames(el) <- gsub("S", "", colnames(el))
+        colnames(el) <- gsub(".", "", colnames(el), fixed = T)
+        colnames(el)[colnames(el)=="N"] <- 0
+        el <- el[,order(as.numeric(colnames(el)))]
+        heatmap.2(el, col = coloursHM(100), na.color = "grey30", colsep = c(4, 8, 12, 16, 20), trace = "n", margins = c(8,8), Colv = F)
         if (save == T) {
           na <- paste0("Figures/Heatmaps/", Sys.time(), ".jpg")
-          na <- gsub("|", "", na, fixed = T)
-          pdf(na, useDingbats=FALSE, height = 11.69, sidth = 8.27)
+          na <- gsub(":", "", na, fixed = T)
+          pdf(na, useDingbats=FALSE, height = 11.69, width = 8.27)
           heatmap.2(el, col = coloursHM(100), na.color = "grey30", colsep = c(4, 8, 12, 16, 20), trace = "n", margins = c(8,8))
           dev.off()
         }
       } else {
-        heatmap.2(el, col = coloursHM(100), na.color = "grey30", colsep = c(3, 6, 9, 12), trace = "n", margins = c(8,8))
+        colnames(el) <- gsub("R[12345]_pTyr_", "", colnames(el))
+        colnames(el) <- gsub("S", "", colnames(el))
+        colnames(el) <- gsub(".", "", colnames(el), fixed = T)
+        colnames(el)[colnames(el)=="N"] <- 0
+        el <- el[,order(as.numeric(colnames(el)))]
         if (save == T) {
           na <- paste0("Figures/Heatmaps/", Sys.time(), ".jpg")
-          na <- gsub("|", "", na, fixed = T)
-          pdf(na, useDingbats=FALSE, height = 11.69, sidth = 8.27)
+          na <- gsub(":", "", na, fixed = T)
+          pdf(na, useDingbats=FALSE, height = 11.69, width = 8.27)
           heatmap.2(el, col = coloursHM(100), na.color = "grey30", colsep = c(3, 6, 9, 12), trace = "n", margins = c(8,8))
           dev.off()
         }
@@ -68,16 +77,16 @@ PlotHMmeans <- function(psites, tab, save = T) { # psites is the vector of phosp
   gtab <-cbind(gtab, "0" = rep(0, nrow(gtab)))
   gtab <- gtab[,order(as.numeric(colnames(gtab)))]
   regulation <- tab$Regulation[match(row.names(gtab), tab$GeneID)]
+  regulation <- ifelse(regulation == "TRUE", 2, 1)
   na <- row.names(gtab)
   gtab <- apply(gtab, 2, as.numeric)
   row.names(gtab) <- na
-  heatmap.2(gtab, col = coloursHMFC(100), na.color = "grey30",trace = "n", margins = c(8,8), Colv = F)
-     
+  heatmap.2(gtab, col = coloursHMFC(100), na.color = "grey30",trace = "n", margins = c(8,8), Colv = F, colRow = regulation)
   if (save == T) {
-    na <- paste0("Figures/Heatmaps/", el, ".jpg")
-    na <- gsub("|", "", na, fixed = T)
-    jpeg(na, 5.845, 4.135, units = "in", res = 300) # width and height in inches.
-    print(g)
+    na <- paste0("Figures/Heatmaps/", Sys.time(), ".pdf")
+    na <- gsub(":", "", na, fixed = T)
+    pdf(na, useDingbats=FALSE, height = 11.69, width = 8.27)
+    heatmap.2(gtab, col = coloursHMFC(100), na.color = "grey30",trace = "n", margins = c(8,8), Colv = F, colRow = regulation)
     dev.off()
   }
 }
