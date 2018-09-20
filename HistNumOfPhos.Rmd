@@ -116,7 +116,11 @@ ggplot(gtab, aes(x = pSiteNumber, y = length, group = pSiteNumber)) + geom_violi
 
 ggplot(gtab, aes(x = pSiteNumber, y = length, group = pSiteNumber))   + geom_jitter(alpha = 0.5, size = 0.6, position = position_jitter(height = .1, width = .2))  + theme_minimal() + xlim(0,30) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + xlab("Number of phosphorylation site identified per protein")
 
+<<<<<<< HEAD
 pdf("Figures/NumPsiteVsLength.pdf", useDingbats=FALSE, 8, 8)
+=======
+pdf("/NumPsiteVsLength.pdf", useDingbats=FALSE, 8, 8)
+>>>>>>> 8a0cf00292d1cba7e439125f36a8a933d4e28b7e
 ggplot(gtab, aes(x = pSiteNumber, y = length, group = pSiteNumber))   + geom_jitter(alpha = 0.5, size = 0.6, position = position_jitter(height = .1, width = .2))  + theme_minimal() + xlim(0,30) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + xlab("Number of phosphorylation site identified per protein")
 dev.off()
 ```
