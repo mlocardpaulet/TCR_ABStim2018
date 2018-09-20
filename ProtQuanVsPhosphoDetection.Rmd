@@ -1,0 +1,174 @@
+---
+title: "Phosphorylated protein detectability Vs relative quantity"
+author: "Marie Locard-Paulet"
+date: '`r date()`'
+output: html_document
+---
+
+```{r Functions}
+ReorderProteinIDs <- function(inputvector) {
+  # Function that reorder alphabetically each protein ID separated with ";" in a vector.
+  l <- sapply(inputvector, strsplit, ";", fixed = T)
+  l <- lapply(l, sort)
+  l <- lapply(l, paste, collapse = ";")
+  as.character(unlist(l))
+}
+```
+
+```{r packages}
+require(knitr)
+require(ggplot2)
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+I load the proteomic analysis of T Cells from the separating, and our phospho-data set.
+
+```{r, echo = T}
+input <- read.table(file = "Raw/DeepProteome/protWTseparating1528_SP_jan2017.txt", sep = "\t", header = T, stringsAsFactors = F)
+load(file = "RData/12_PhosphoTableWithProteinWaring.RData")
+```
+
+I also load the Uniprot database for mouse (only reviewed proteins, downloaded the 20th of November 2018) in order to check the depth of our analysis.
+```{r}
+# First, I have removed the characters "'" and "#".
+up <- read.table(file = "UniprotReviewedMouse_20190920/uniprot-filtered-organismMusmusculusReviewed.tab", sep = "\t", header = T)
+```
+
+I check the protein overlap between the two data sets:
+```{r}
+protinput <- unique(input$Protein.IDs)
+protinput <- ReorderProteinIDs(protinput)
+protinput <- sapply(protinput, strsplit, ";")
+protinput <- as.character(unlist(protinput)[!grepl("REV_", unlist(protinput)) & !grepl("CON_", unlist(protinput))])
+# Manual correction of depreciated IDs:
+protinput[protinput=="P62204"] <- "P0DP26"
+protinput[protinput=="Q9CQU1"] <- "C0HKD8"
+protinput[protinput=="P29020"] <- "P24161"
+
+protinput[protinput=="Q08619"] <- "P0DOV1"
+protinput[protinput=="P22752"] <- "C0HKE1"
+protinput[protinput=="Q9CQ01"] <- "C0HKG5"
+protinput[protinput=="Q9D365"] <- "C0HK79"
+
+
+phosinput <- sapply(export$Accession, strsplit, ";")
+phosinput <- unique(as.character(phosinput))
+phosinput[phosinput=="P62204"] <- "P0DP26"
+phosinput[phosinput=="Q9CQU1"] <- "C0HKD8"
+phosinput[phosinput=="P29020"] <- "P24161"
+
+Uniprot <- unique(up$Entry)
+
+Protreg <- unique(export$Accession[export$Regulation == "TRUE"])
+Protreg <- sapply(Protreg, strsplit, ";")
+Protreg <- unique(as.character(Protreg))
+Protreg[Protreg=="P62204"] <- "P0DP26"
+Protreg[Protreg=="Q9CQU1"] <- "C0HKD8"
+Protreg[Protreg=="P29020"] <- "P24161"
+
+
+v <- venneuler::venneuler(
+  c(
+    "Prot" = length(protinput),
+    "Phos" = length(phosinput),
+    "Uniprot" = length(Uniprot),
+    "Reg" = length(Protreg),
+    "Prot&Phos" = length(intersect(protinput, phosinput)),
+    "Prot&Uniprot" = length(intersect(protinput, Uniprot)),
+    "Uniprot&Phos" = length(intersect(Uniprot, phosinput)),
+    "Prot&Reg" = length(intersect(protinput, Protreg)),
+    "Reg&Phos" = length(intersect(Protreg, phosinput)),
+    "Reg&Uniprot" = length(intersect(Protreg, Uniprot)),
+    "Prot&Phos&Uniprot" = length(intersect(Uniprot, intersect(protinput, phosinput))),
+    "Prot&Phos&Reg" = length(intersect(Protreg, intersect(protinput, phosinput))),
+    "Prot&Reg&Uniprot" = length(intersect(Uniprot, intersect(protinput, Protreg))),
+    "Phos&Reg&Uniprot" = length(intersect(Uniprot, intersect(phosinput, Protreg))),
+    "Prot&Phos&Uniprot&Reg" = length(intersect(Protreg, intersect(Uniprot, intersect(protinput, phosinput))))
+  )
+)
+plot(v, main = "Number of identified proteins")
+
+kable(data.frame("Prot" = length(protinput),
+    "Phos" = length(phosinput),
+    "Uniprot" = length(Uniprot),
+    "Reg" = length(Protreg),
+    "Prot&Phos" = length(intersect(protinput, phosinput)),
+    "Prot&Uniprot" = length(intersect(protinput, Uniprot)),
+    "Uniprot&Phos" = length(intersect(Uniprot, phosinput)),
+    "Prot&Reg" = length(intersect(protinput, Protreg)),
+    "Reg&Phos" = length(intersect(Protreg, phosinput)),
+    "Reg&Uniprot" = length(intersect(Protreg, Uniprot)),
+    "Prot&Phos&Uniprot" = length(intersect(Uniprot, intersect(protinput, phosinput))),
+    "Prot&Phos&Reg" = length(intersect(Protreg, intersect(protinput, phosinput))),
+    "Prot&Reg&Uniprot" = length(intersect(Uniprot, intersect(protinput, Protreg))),
+    "Phos&Reg&Uniprot" = length(intersect(Uniprot, intersect(phosinput, Protreg))),
+    "Prot&Phos&Uniprot&Reg" = length(intersect(Protreg, intersect(Uniprot, intersect(protinput, phosinput))))))
+
+gtab <- data.frame("DataSet" = c("Phospho-proteome", "Uniprot reviewed entries", "Regulated phospho-proteins", "Deep proteome"), "Count" = c(length(phosinput), length(Uniprot), length(Protreg), length(protinput)))
+gtab$DataSet <- factor(as.character(gtab$DataSet), levels = unique(gtab$DataSet)[c(2, 4, 1, 3)])
+
+g <- ggplot(gtab, aes(x = DataSet, y = Count, fill = DataSet)) + geom_bar(stat = "identity", col = "black") 
+g <- g + scale_fill_manual(values = c("grey80", "mediumseagreen", "orange", "red")) + theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 8)) + theme_minimal()
+print(g)
+
+pdf("Figures/NumbersDatasets.pdf", useDingbats=FALSE, 8, 8)
+print(g)
+dev.off()
+```
+
+Histograms:
+```{r}
+# Data preparation:
+vec <- vector(length = nrow(input))
+for (i in seq_along(vec)) {
+  val <- input$Protein.IDs[i]
+  if (!grepl(";", val)) {
+    vec[i] <- ifelse(val %in% phosinput, "InPhos", NA)
+  } else {
+    val <- strsplit(val, ";", fixed = T)[[1]]
+    val2 <- sapply(val, function(x) {
+      x %in% phosinput
+    })
+    vec[i] <- ifelse(sum(val2)>0, "InPhos", NA)
+  }
+}
+input$IsInPhosphoDS <- vec
+# Calculation of medians:
+med1 <- median(log10(as.numeric(input$iBAQ)), na.rm = T)
+med2 <- median(log10(as.numeric(input$iBAQ[input$IsInPhosphoDS=="InPhos"])), na.rm = T)
+
+# Graphical representation:
+g <- ggplot(input, aes(x = log10(as.numeric(iBAQ)))) + geom_histogram(alpha = 0.6, col = "black") + geom_histogram(data = subset(input, input$IsInPhosphoDS=="InPhos"), aes(x = log10(as.numeric(iBAQ))), fill = "red", alpha = 0.6, col = "grey87") + geom_vline(xintercept = med1, col = "black", linetype = "dashed", size = 1.1) + geom_vline(xintercept = med2, col = "red", linetype = "dashed", size = 1.1) + theme_bw() + ggtitle("Histogram of log10-transformed iBAQ values for the proteins in the \"deep\" data set", subtitle = "The histogram of the subset of proteins that are phosphorylated in the phospho-data set are in red")
+print(g)
+
+pdf("Figures/HistiBAQDeep.pdf", useDingbats=FALSE, 8, 8)
+print(g)
+dev.off()
+```
+
+```{r}
+load(file = "RData/NumSitePerProt.RData")
+input$pSiteNumber <- gtab$pSiteNumber[match(input$Majority.protein.IDs, gtab$Protein)]
+
+g <- ggplot(input, aes(x = pSiteNumber, y = log10(as.numeric(iBAQ)), group = pSiteNumber))  +  geom_jitter(alpha = 0.5, size = 0.6, position = position_jitter(height = .1, width = .2))  + theme_minimal() + xlim(0,30) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + xlab("Number of phosporylation site identified per protein")
+print(g)
+
+pdf("Figures/iBAQDeepVsNumPhos.pdf", useDingbats=FALSE, 12, 8)
+print(g)
+dev.off()
+```
+
+# Comparison of proteomes
+
+```{r}
+NumDeepProt <- length(protinput)
+
+```
+
+```{r}
+Sys.info()
+```

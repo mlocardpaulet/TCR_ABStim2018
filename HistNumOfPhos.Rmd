@@ -1,0 +1,133 @@
+---
+title: "Histogram of the number of site per protein"
+author: "Marie Locard-Paulet"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r Packages, echo=FALSE, message=FALSE, warning=FALSE}
+require(ggplot2)
+require(knitr)
+```
+
+```{r}
+load("RData/12_PhosphoTableWithProteinWaring.RData")
+load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
+```
+
+# Histogram of the number of detected phosphorylation sites per proteins
+
+```{r}
+for (i in seq_along(psiteInfo)) {
+  vec <- psiteInfo[[i]]
+  vec$Accession <- strsplit(vec$phosphoSites, "_", fixed = T)[[1]][1]
+  psiteInfo[[i]] <- vec
+}
+accessions <- sapply(psiteInfo, function(x) {
+  x$Accession
+})
+monosites <- sapply(psiteInfo, function(x) {
+  x$MonoSites
+})
+accessions <- sapply(seq_along(accessions), function(x) {
+  rep(accessions[x], length(monosites[[x]]))
+})
+tabcountprot <- data.frame("Accession" = unlist(accessions), "Monosite" = unlist(monosites))
+tabcountprot <- tabcountprot[!duplicated(tabcountprot),]
+gtab <- data.frame("Protein"= names(table(as.character(tabcountprot$Accession))), "pSiteNumber"= as.numeric(as.character(table(tabcountprot$Accession))))
+ggplot(gtab, aes(x = pSiteNumber)) + geom_histogram(bins = 100) + theme_bw() + coord_flip()
+```
+
+I reduce the y-axis by removing the proteins with more than 30 sites.
+
+Table of removed proteins:
+
+`r kable(gtab[gtab[,2]>30,])`
+
+```{r}
+g <- ggplot(gtab, aes(x = pSiteNumber)) + geom_histogram(col = "black", fill = "grey70") + theme_minimal() + xlim(0,30) + xlab("Number of phosphorylation site nper protein") + ylab("Frequency") + geom_hline(yintercept = 0) # + coord_flip()
+print(g)
+pdf("Figures/HistPsites.pdf", useDingbats=FALSE, 8, 8)
+print(g)
+dev.off()
+```
+
+# I do the same for regulated proteins
+
+```{r}
+accessions <- sapply(psiteInfo[names(psiteInfo) %in% export$psiteID[export$Regulation == "TRUE"]], function(x) {
+  x$Accession
+})
+monosites <- sapply(psiteInfo[names(psiteInfo) %in% export$psiteID[export$Regulation == "TRUE"]], function(x) {
+  x$MonoSites
+})
+accessions <- sapply(seq_along(accessions), function(x) {
+  rep(accessions[x], length(monosites[[x]]))
+})
+tabcountprot <- data.frame("Accession" = unlist(accessions), "Monosite" = unlist(monosites))
+tabcountprot <- tabcountprot[!duplicated(tabcountprot),]
+gtab <- data.frame("Protein"= names(table(as.character(tabcountprot$Accession))), "pSiteNumber"= as.numeric(as.character(table(tabcountprot$Accession))))
+
+ggplot(gtab, aes(x = pSiteNumber)) + geom_histogram(bins = 100) + theme_bw() + coord_flip()
+ggplot(gtab, aes(x = pSiteNumber)) + geom_histogram() + theme_bw() + coord_flip()
+```
+
+I reduce the y-axis:
+
+```{r}
+g <- ggplot(gtab, aes(x = pSiteNumber)) + geom_histogram(col = "black", fill = "grey70") + theme_minimal() + xlab("Number of phosphorylation site nper protein") + ylab("Frequency") + geom_hline(yintercept = 0) # + coord_flip()
+print(g)
+pdf("Figures/HistPsitesReg.pdf", useDingbats=FALSE, 8, 8)
+print(g)
+dev.off()
+```
+
+# Relation between length of the protein and our ability to detect phosphorylation sites
+
+I also load the Uniprot database for mouse (only reviewed proteins, downloaded the 20th of November 2018) in order to check the depth of our analysis.
+```{r}
+# First, I have removed the characters "'" and "#".
+up <- read.table(file = "UniprotReviewedMouse_20190920/uniprot-filtered-organismMusmusculusReviewed.tab", sep = "\t", header = T)
+```
+
+Map the protein length to the table of proteins and plot the correlation.
+
+**I remove the protein Titin that is really long compared to the others: 35213aa.**
+
+```{r}
+accessions <- sapply(psiteInfo, function(x) {
+  x$Accession
+})
+monosites <- sapply(psiteInfo, function(x) {
+  x$MonoSites
+})
+accessions <- sapply(seq_along(accessions), function(x) {
+  rep(accessions[x], length(monosites[[x]]))
+})
+tabcountprot <- data.frame("Accession" = unlist(accessions), "Monosite" = unlist(monosites))
+tabcountprot <- tabcountprot[!duplicated(tabcountprot),]
+gtab <- data.frame("Protein"= names(table(as.character(tabcountprot$Accession))), "pSiteNumber"= as.numeric(as.character(table(tabcountprot$Accession))))
+gtab$length <- up$Length[match(as.character(gtab$Protein), up$Entry)]
+gtab$length <- as.numeric(as.character(gtab$length))
+gtab <- gtab[gtab$length<30000,]
+gtab <- gtab[!is.na(gtab$pSiteNumber),]
+# Relationship between length and "detectability":
+ggplot(gtab, aes(x = pSiteNumber, y = length, group = pSiteNumber)) + geom_violin(alpha = 0.6 , fill = "grey70")  + theme_minimal() + geom_dotplot(binaxis= "y",stackdir ="centerwhole", dotsize = 0.1, stackratio = 0.1, alpha = 0.6) + xlim(0,30)
+
+ggplot(gtab, aes(x = pSiteNumber, y = length, group = pSiteNumber))   + geom_jitter(alpha = 0.5, size = 0.6, position = position_jitter(height = .1, width = .2))  + theme_minimal() + xlim(0,30) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + xlab("Number of phosphorylation site identified per protein")
+
+pdf("Figures/NumPsiteVsLength.pdf", useDingbats=FALSE, 8, 8)
+ggplot(gtab, aes(x = pSiteNumber, y = length, group = pSiteNumber))   + geom_jitter(alpha = 0.5, size = 0.6, position = position_jitter(height = .1, width = .2))  + theme_minimal() + xlim(0,30) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + xlab("Number of phosphorylation site identified per protein")
+dev.off()
+```
+
+I save the table for mapping the number of site per protein in other graphical representations:
+
+```{r}
+save(gtab, file = "RData/NumSitePerProt.RData")
+```
+
+
+```{r SessionInfo, echo=FALSE}
+sessionInfo()
+``` 
