@@ -219,6 +219,10 @@ kable(gtab)
 jpeg("Figures/BarPlotTimeRegulatedSites.jpg", 11.69, 8.27, units = "in", res = 300) # width and height in inches.
 print(g1)
 dev.off()
+
+pdf("Figures/BarPlotTimeRegulatedSites.pdf", useDingbats=FALSE, 11.69, 8.27)
+print(g1)
+dev.off()
 ```
 
 
