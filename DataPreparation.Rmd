@@ -395,7 +395,7 @@ dev.off()
 
 ## For figure 1
 
-Number of phosphorylation sites identified.
+Number of phosphorylated amino-acids identified in the study.
 
 ```{r}
 # Number of amino acids:
@@ -651,11 +651,13 @@ The multiply-phosphorylated sites do not get a score.
 Number of each amino-acid in the table:
 
 ```{r}
-gtab <- melt(aminoacidtable)
+# gtab <- melt(aminoacidtable)
+gtab <- rbind(data.frame("Var1"=row.names(laatables[[1]]), "value"=laatables[[1]][,4], "Sample" = rep("TiO2", 4)), data.frame("Var1"=row.names(laatables[[2]]), "value"=laatables[[2]][,3], "Sample" = rep("pYIP", 4)))
 gtab <- gtab[order(gtab$Var1),]
-gtab$Sample <- sapply(as.character(gtab$Var2), function(x) {
-  strsplit(x, "_", fixed = T)[[1]][1]
-})
+# gtab$Sample <- sapply(as.character(gtab$Var2), function(x) {
+#   strsplit(x, "_", fixed = T)[[1]][1]
+# })
+gtab <- gtab[gtab$Var1 != "total",]
 g <- ggplot(gtab, aes(x = "", y = value, fill = Var1)) + geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + xlab("Biological replicate") + ylab("Proportion") + ggtitle("Amino-acid composition of data sets") + scale_fill_manual(values = mlpcolours[4:6]) + theme_minimal() + facet_wrap(.~Sample)
 print(g)
 
