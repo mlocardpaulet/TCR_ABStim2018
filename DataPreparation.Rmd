@@ -532,12 +532,11 @@ print(laatables)
 ################################################################################
 
 # Not referenced in PhosphoSitePlus:
-
 laa <- lapply(lf, function(x) {
-  lapply(x$phosphoSites[is.na(x$PSPMouse)], function(y) {
-    psiteInfo[names(psiteInfo) == y][[1]]$MonoSites
-  })
+  x$phosphoSites[is.na(x$PSPMouse) & !(grepl(";", x$psiteGeneID))]
 })
+ # There are no multiple phosphorylations
+
 laaID <- lapply(laa, function(x) {
   unique(unlist(x))
 })

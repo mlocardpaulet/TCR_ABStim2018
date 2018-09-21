@@ -210,8 +210,8 @@ NotMapped <- unique(seq$phosphoSites[is.na(seq$PhosphoPlusIDs)])
 I map back PhosphositePlus IDs and informations to annotated tables.
 
 ```{r, eval = F}
-vec <- paste0(tabK$SUB_ACC_ID, "_", tabK$SUB_MOD_RSD)
-vec[vec == "NA_NA"] <- paste0(tabK$ACC_ID[vec == "NA_NA"], "_", gsub("-p", "", tabK$MOD_RSD[vec == "NA_NA"], fixed = T))
+vec <- paste0(tabK$ACC_ID, "_", gsub("-p", "", tabK$MOD_RSD, fixed = T))
+vec[vec == "NA_NA"] <- paste0(tabK$SUB_ACC_ID[vec == "NA_NA"], "_", tabK$SUB_MOD_RSD[vec == "NA_NA"])
 tabKM <- tabK[tabK$ORGANISM == "mouse",]
 vecM <- vec[tabK$ORGANISM == "mouse"]
   
@@ -261,9 +261,8 @@ vec <- sapply(psiteInfo, function(x) {x$PhosphoSitePlusAll})
 notmapped <- names(vec)[is.na(vec)]
 mapped <- names(vec)[!is.na(vec)]
 
-vec <- sapply(psiteInfo, function(x) {x$GeneID})
-vec <- unlist(vec)
-vec <- as.character(vec[names(psiteInfo) %in% notmapped])
+vec <- sapply(psiteInfo[names(psiteInfo) %in% notmapped], function(x) {x$GeneID})
+vec <- as.character(vec)
 vec <- vec[grepl("_Y", vec, fixed = T)]
 ```
 
