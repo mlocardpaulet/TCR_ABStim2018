@@ -409,6 +409,27 @@ laaID <- lapply(laa, function(x) {
   unique(unlist(x))
 })
   
+uniqueAAID <- sapply(psiteInfo, function(x) {
+  x$MonoSites
+})
+uniqueAAID <- unique(unlist(uniqueAAID))
+numAATot <- as.character(
+  sapply(uniqueAAID, function(y) {
+    gsub("[1234567890]", "", strsplit(y, "_", fixed = T)[[1]][2])
+  })
+)
+numAATot <- gsub(";", "", numAATot, fixed = T)
+numAATot <- table(numAATot)
+
+uniqueProtID <- sapply(names(psiteInfo), function(x) {
+  strsplit(x, "_")[[1]][1]
+})
+uniqueProtID <- unique(uniqueProtID)
+```
+
+Total number of pS, pT, pY identified: `r numAATot`. These are present on `r length(uniqueProtID)` proteins.
+
+```{r}
 laa <- lapply(laaID, function(x) {
   as.character(
     sapply(x, function(y) {
