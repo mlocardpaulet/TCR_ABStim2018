@@ -198,6 +198,13 @@ for (j in seq_along(lf)) {
 
         
 save(lf, file = "RData/01_ParsedTables.RData")
+
+# Save table for troubleshouting:
+temp <- merge(lf[[1]], lf[[2]], by = "phosphoSites", all = T)
+for (i in 3:length(lf)) {
+  temp <- merge(temp, lf[[i]], by = "phosphoSites", all = T)
+}
+write.table(temp, "ParsedTables.txt", sep = "\t", row.names = F)
 ```
 
 
@@ -394,6 +401,50 @@ dev.off()
 ```
 
 ## For figure 1
+
+From now on, I will differenciate phosphorylation sites that have a localisation score >75% (Class 1), >0.5 and under or equal to 0.75 (Class 2) and >0.25 and under or equal to 0.5 (Class 3).
+
+```{r}
+for (i in 1:length(lf)) {
+        tab <- lf[[i]]
+        loc <- as.numeric(sub("%","",tab$Localization.prob))
+        vec <- ifelse(loc > 0.75, "Class 1", "LowLocScore")
+        vec[loc>0.5 & loc<=0.75] <- "Class 2"
+        vec[loc>0.25 & loc<=0.5] <- "Class 3"
+        tab$LocalisationClass <-  vec
+        lf[[i]] <- tab
+}
+``` 
+
+The multiply-phosphorylated sites do not get a score.
+
+```{r}
+Classes <- sapply(lf, function(x) table(x$LocalisationClass))
+gtab <- melt(Classes)
+gtab$Sample <- sapply(gtab$L1, function(x) {
+  strsplit(x, "_", fixed = T)[[1]][1]
+})
+gtab <- gtab[order(gtab$Var1),]
+
+g <- ggplot(gtab, aes(x = "", y = value, fill = Var1))+ geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + xlab("Biological replicate") + ylab("Proportion") + ggtitle("Class of the identified phosphorylation sites") + scale_fill_manual(values = mlpcolours[c(1:4)]) + theme_minimal() + facet_wrap(~Sample)  
+print(g)
+
+kable(gtab)
+
+pdf("Figures/ClassPhospho.pdf", useDingbats=FALSE, 11.69, 8.27)
+print(g)
+dev.off()
+```
+
+For the monophosphorylations, I keep the phosphosites Class 1 and Class 2.
+
+```{r}
+for (i in 1:length(lf)) {
+        tab1 <- lf[[i]]
+        tab1 <- tab1[tab1$LocalisationClass == "Class 1" | tab1$LocalisationClass == "Class 2" | grepl("+", tab1$phosphoSites, fixed = T),]
+        lf[[i]] <- tab1
+}
+```
 
 Number of phosphorylated amino-acids identified in the study.
 
@@ -652,22 +703,6 @@ numtotTnotref <- length(vec[vec=="T"])
 numtotYnotref <- length(vec[vec=="Y"])
 ```
 
-From now on, I will differenciate phosphorylation sites that have a localisation score >75% (Class 1), >0.5 and under or equal to 0.75 (Class 2) and >0.25 and under or equal to 0.5 (Class 3).
-
-```{r}
-for (i in 1:length(lf)) {
-        tab <- lf[[i]]
-        loc <- as.numeric(sub("%","",tab$Localization.prob))
-        vec <- ifelse(loc > 0.75, "Class 1", "LowLocScore")
-        vec[loc>0.5 & loc<=0.75] <- "Class 2"
-        vec[loc>0.25 & loc<=0.5] <- "Class 3"
-        tab$LocalisationClass <-  vec
-        lf[[i]] <- tab
-}
-``` 
-
-The multiply-phosphorylated sites do not get a score.
-
 Number of each amino-acid in the table:
 
 ```{r}
@@ -734,23 +769,6 @@ dev.off()
 
 *I think that the high number of S/T that we find in the pYIP can be explained by the contiguous sites in multiply-phosphorylated peptides.*
 
-```{r}
-Classes <- sapply(lf, function(x) table(x$LocalisationClass))
-gtab <- melt(Classes)
-gtab$Sample <- sapply(gtab$L1, function(x) {
-  strsplit(x, "_", fixed = T)[[1]][1]
-})
-gtab <- gtab[order(gtab$Var1),]
-
-g <- ggplot(gtab, aes(x = "", y = value, fill = Var1))+ geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + xlab("Biological replicate") + ylab("Proportion") + ggtitle("Class of the identified phosphorylation sites") + scale_fill_manual(values = mlpcolours[c(1:4)]) + theme_minimal() + facet_wrap(~Sample)  
-print(g)
-
-kable(gtab)
-
-pdf("Figures/ClassPhospho.pdf", useDingbats=FALSE, 11.69, 8.27)
-print(g)
-dev.off()
-```
 
 --------------------------------------------------------------------------------
 
@@ -763,7 +781,7 @@ I log2-transform the data set.
 lmat <- list()
 for (i in 1:length(lf)) {
         tab1 <- lf[[i]]
-        tab1 <- tab1[tab1$LocalisationClass == "Class 1" | tab1$LocalisationClass == "Class 2" | grepl("+", tab1$phosphoSites, fixed = T),]
+        # tab1 <- tab1[tab1$LocalisationClass == "Class 1" | tab1$LocalisationClass == "Class 2" | grepl("+", tab1$phosphoSites, fixed = T),]
         mat11 <- tab1[,grepl("iRTNorm", names(tab1), fixed = T)]
         names(mat11) <- gsub("Intensity.", "", names(mat11), fixed = T)
         n <- sapply(1:nrow(mat11), function(x) length(mat11[x,][is.na(mat11[x,])]))
