@@ -66,11 +66,16 @@ I find from PhosphoSitePlus the putative kinases responsible for the phosphoryla
 
 ```{r}
 load(file = "RData/DBMapping/PsitePlus.RData")
-temp <- sapply(export$psiteID, function(x) {
-    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusAll[1]
+tempM <- sapply(export$psiteID, function(x) {
+    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusMouse[1]
   })
-export$PsitePlusIDMultiSpecies <- temp
-names(tabK)[names(tabK) == "ALL_SITEGPID"] <- "PsitePlusIDMultiSpecies"
+tempA <- sapply(export$psiteID, function(x) {
+    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusNotMouse[1]
+  })
+tempM[is.na(tempM)] <- tempA[is.na(tempM)]
+export$PsitePlusIDMultiSpecies <- tempM
+tabK <- ltabK$KinaseSubstrate
+names(tabK)[names(tabK) == "SITE_GRP_ID"] <- "PsitePlusIDMultiSpecies"
 tabK <- tabK[tabK$KIN_ORGANISM %in% c("human", "mouse", "rat"),]
 tabK <- tabK[order(tabK$KIN_ORGANISM),]
 mer <- merge(export, tabK, by = "PsitePlusIDMultiSpecies", all = T)
