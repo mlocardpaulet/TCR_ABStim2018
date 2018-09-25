@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r, echo=F, message=F}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = F)
 
 require(knitr)
 require(Biostrings)
@@ -70,21 +70,34 @@ I merge the tables based on the substrate sequence window (in upper cases). In o
 On top of keeping the kinase/substrate and domains information, I create a column called  `InPsitePlus` that contains "yes" or "no" depending on if this phosphosite has already been references in the database.
 
 ```{r, eval = F}
+# ltabK <- list()
+# ltabK[[1]] <- read.table("PhosphoSitePlus_20180817/Kinase_Substrate_Dataset", as.is = T, comment.char = "#", sep = "\t", header = T, skip = 3)
+# ltabK[[2]] <- read.csv("PhosphoSitePlus_20180817/Phosphorylation_site_dataset", as.is = T, comment.char = "#", sep = "\t", header = T, skip = 3)
+# ltabK[[1]]$SITE_...7_AA <- toupper(ltabK[[1]]$SITE_...7_AA)
+# ltabK[[2]]$SITE_...7_AA <- toupper(ltabK[[2]]$SITE_...7_AA)
+# tabK <- merge(ltabK[[1]], ltabK[[2]], by = "SITE_...7_AA", all = T)
+# SITE_GRP_ID <- as.character(tabK$SITE_GRP_ID.x)
+# SITE_GRP_ID[is.na(SITE_GRP_ID)] <- as.character(tabK$SITE_GRP_ID.y)[is.na(SITE_GRP_ID)]
+# tabK$ALL_SITEGPID <- SITE_GRP_ID
+# save(tabK, file = "RData/DBMapping/PsitePlus.RData")
+```
+
+```{r, eval = F}
 ltabK <- list()
 ltabK[[1]] <- read.table("PhosphoSitePlus_20180817/Kinase_Substrate_Dataset", as.is = T, comment.char = "#", sep = "\t", header = T, skip = 3)
 ltabK[[2]] <- read.csv("PhosphoSitePlus_20180817/Phosphorylation_site_dataset", as.is = T, comment.char = "#", sep = "\t", header = T, skip = 3)
 ltabK[[1]]$SITE_...7_AA <- toupper(ltabK[[1]]$SITE_...7_AA)
 ltabK[[2]]$SITE_...7_AA <- toupper(ltabK[[2]]$SITE_...7_AA)
-tabK <- merge(ltabK[[1]], ltabK[[2]], by = "SITE_...7_AA", all = T)
-SITE_GRP_ID <- as.character(tabK$SITE_GRP_ID.x)
-SITE_GRP_ID[is.na(SITE_GRP_ID)] <- as.character(tabK$SITE_GRP_ID.y)[is.na(SITE_GRP_ID)]
-tabK$ALL_SITEGPID <- SITE_GRP_ID
-save(tabK, file = "RData/DBMapping/PsitePlus.RData")
+names(ltabK) <- c("KinaseSubstrate", "PhosphoSite")
+
+save(ltabK, file = "RData/DBMapping/PsitePlus.RData")
 ```
 
 ```{r}
 load(file = "RData/DBMapping/PsitePlus.RData")
 ```
+
+I find the sequence windows of the data set, and reduce them from 15- to 7-aa length. I split the IDs with protein ambiguity ("protA;protB") to be sure not to miss them.
 
 ```{r}
 load("RData/01_ParsedTables.RData")
@@ -112,46 +125,74 @@ colnames(seq) <- c("Window15", "phosphoSites")
 # Reduce the sequence length:
 vec <- as.character(sapply(seq[,1], substr, 9, 23))
 seq <- cbind(seq, "Window7" = vec)
+
+# Remove redundancy:
+seq <- seq[!(duplicated(seq[,2:3])),]
+seq <- seq[order(seq[,2]),]
+# Make IDs for multiple protein IDs:
+seq <- seq[,2:3]
+temp <- seq[grepl(";", seq[,1]),]
+vecprot <- lapply(temp[,1], function(x) {
+  strsplit(x, "_", fixed = T)[[1]][1]
+})
+vecprot <- lapply(vecprot, function(x) {
+  strsplit(x, ";", fixed = T)[[1]]
+})
+vec2 <- sapply(seq_len(nrow(temp)), function(x) {
+  rep(temp[x,2],sapply(vecprot, length)[x])
+})
+vec3 <- sapply(seq_len(nrow(temp)), function(x) {
+  rep(temp[x,1],sapply(vecprot, length)[x])
+})
+temp <- cbind(unlist(vec3), unlist(vec2), unlist(vecprot))
+temp <- temp[!duplicated(temp),]
+colnames(temp) <- c("phosphoSites",  "Window7", "ProteinAccession")
+temp2 <- seq[!(grepl(";", seq[,1])),]
+temp2 <- cbind(temp2, "ProteinAccession" = sapply(temp2[,1], function(x) {
+  strsplit(x, "_", fixed = T)[[1]][1]
+}))
+seq <- rbind(temp2, temp)
 ```
+
+First, I look for the sites in our data set that are present in the mouse database from PhosphositePlus.
 
 ```{r}
 psiteID <- names(psiteInfo)
 
-Known <- seq[,2][seq[,3] %in% as.character(tabK$SITE_...7_AA)]
+tabPSPMouse <- ltabK$PhosphoSite[ltabK$PhosphoSite$ORGANISM == "mouse",]
 
-PPIDs <- tabK$ALL_SITEGPID[match(seq[,3], as.character(tabK$SITE_...7_AA))]
-seq <- data.frame(seq, "PhosphoPlusIDs" = PPIDs)
-seq <- seq[!is.na(as.character(seq$Window15)),]
+seq <- cbind(seq, "SiteID" = paste0(seq[,3], "|", seq[,2]))
+tabPSPMouse$SiteID <- paste0(tabPSPMouse$ACC_ID, "|", tabPSPMouse$SITE_...7_AA)
+
+Known <- seq[,1][seq[,4] %in% as.character(tabPSPMouse$SiteID)]
+
+PPIDs <- tabPSPMouse$SITE_GRP_ID[match(seq[,4], as.character(tabPSPMouse$SiteID))]
+seq <- data.frame(seq, "PhosphoPlusIDsMouse" = PPIDs)
 mapped <- unique(seq$phosphoSites[!is.na(seq$PhosphoPlusIDs)])
 notmapped <- unique(seq$phosphoSites[is.na(seq$PhosphoPlusIDs)])
+seqMouse <- seq
 ```
 
-There are `r length(mapped)` phosphorylation sites of our data set mapped to PhosphositePlus IDs due to exact identical sequence. Using this simple matching approach, `r length(notmapped)` of the phosphorylation sites of the data set are not mapped to PhosphositePlus IDs. This can be explained by the absence of the phosphorylation site from PhosphositePlus data base or because it is referenced with a slightly dissimilar sequence due to the fact that it has been observed in an other species (not mouse - so dissimilar sequence). In total, we have `r length(unique(as.character(seq$phosphoSites)))` phosphorylation sites in our data set.
+There are `r length(mapped)` phosphorylation sites of our data set mapped to PhosphositePlus mouse IDs due to exact identical sequence. Using this simple matching approach, `r length(notmapped)` of the phosphorylation sites of the data set are not mapped to PhosphositePlus IDs. In total, we have `r length(unique(as.character(seq$phosphoSites)))` phosphorylation sites in our data set.
+
+Then, I look for the sites in our data set that are present in the all the databases from PhosphositePlus.
 
 In order to gain information from these sites, I look for similar sequences using the "pairwiseAlignment()" function. 
 
 ```{r, echo = F, eval = F}
 # I need to do it in a different way, performing the pairwise alignment on the entire protein sequence in order to avoid mapping similar sequences at different parts of the protein.
-seq2 <- seq[seq$phosphoSites %in% notmapped,]
-
-vec <- sapply(seq2$phosphoSites, function(x) {
-  strsplit(as.character(x), "_", fixed = T)[[1]][1]
-})
-seq2$Accession <- vec
+# seq2 <- seq[seq$phosphoSites %in% as.character(notmapped),]
+seq2 <- seq[!grepl("+", seq[,1], fixed = T),]
+ 
+tabK <- ltabK$PhosphoSite[!(ltabK$PhosphoSite$ORGANISM == "mouse"),]
 
 l <- list(); lOrga <- list()
 for (i in 1:nrow(seq2)) {
         vari <- as.character(seq2$Window7[i])
-        acc <- as.character(seq2$Accession[i])
-        if (!grepl(";", acc)) {
-          acc2 <- c(acc, unlist(MappingList[names(MappingList)==acc]))
-        } else {
-          acc2 <- unlist(sapply(acc, strsplit, ";", fixed = T))
-          acc2 <- c(acc2, unlist(MappingList[names(MappingList) %in% acc2]))
-        }
-        temp <- tabK[(tabK$SUB_ACC_ID %in% acc2 | tabK$ACC_ID %in% acc2),]
+        acc <- as.character(seq2$ProteinAccession[i])
+        acc2 <- unlist(MappingList[names(MappingList)==acc])
+        temp <- tabK[(tabK$ACC_ID %in% acc2),]
         temp$AllOrga <- temp$ORGANISM
-        temp$AllOrga[is.na(temp$AllOrga)] <- temp$SUB_ORGANISM[is.na(temp$AllOrga)]
         if (nrow(temp)>0) {
                 vari2 <- gsub("_", "", temp$SITE_...7_AA)
                 vari <- gsub("_", "", vari)
@@ -159,8 +200,8 @@ for (i in 1:nrow(seq2)) {
                   pairwiseAlignment(AAString(vari), AAString(x), substitutionMatrix = "BLOSUM50", gapOpening = 10, gapExtension = 10, scoreOnly == FALSE)
                   })
                 scores <- sapply(matchList, score)
-                IDs <- temp$ALL_SITEGPID[scores>50 & substr(vari, 8,8) == substr(vari2, 8, 8)]
-                Species <- temp$AllOrga[scores>50 & substr(vari, 8,8) == substr(vari2, 8, 8)]
+                IDs <- unique(temp$SITE_GRP_ID[scores>58 & substr(vari, 8,8) == substr(vari2, 8, 8)])
+                Species <- unique(temp$AllOrga[scores>58 & substr(vari, 8,8) == substr(vari2, 8, 8)])
         }
         if (!(class(IDs) == "character" & length(IDs) == 0)) {
           l[[length(l)+1]] <- IDs
@@ -177,21 +218,29 @@ save(list = c("seq", "seq2", "l", "lOrga"), file = "RData/DBMapping/MappingPhosp
 load("RData/DBMapping/MappingPhospho_02.Rdata")
 ```
 
-On the `r nrow(seq2)` phosphorylation sites of the query, `r length(l)` have sequence matches.
+On the `r length(l)` phosphorylation sites of the query, `r length(l[sapply(l, length)>0])` have sequence matches.
 
 ```{r, echo = F}
-n <- sapply(l, function(x){length(unique(x))})
+n <- sapply(lOrga, function(x){max(as.numeric(as.character(table(x))))})
 ```
 
-There are `r length(l[n>1])` cases where several sequences of the same organism match the input sequence window: `r sort(names(l[n>1]))`. I manually check these in PhosphositePlus.
 
-```{r}
+```{r, eval = F}
+temp <- seq2
+temp$PSPNonMouseIDs <- sapply(l[match(temp$phosphoSites, names(l))], paste, collapse = "|")
+temp$PSPNonMouseIDsOrganisms <- sapply(lOrga[match(temp$phosphoSites, names(lOrga))], paste, collapse = "|")
+temp$PSPNonMouseIDsOrganisms[temp$PSPNonMouseIDsOrganisms == ""] <- NA
+temp$PSPNonMouseIDs[temp$PSPNonMouseIDs == ""] <- NA
+seq <- temp
+```
+
+```{r, eval = F}
 ManualInput <- read.table("RData/DBMapping/ManualMapping.txt", sep = "\t", header = T, stringsAsFactors = F)
 ```
 
-I manually add these in our data sets.
+<!-- I manually add these in our data sets. -->
 
-```{r}
+```{r, eval = F}
 for (i in seq_len(nrow(ManualInput))) {
   l[[length(l)+1]] <- ManualInput[i,2]
   names(l)[length(l)] <- ManualInput[i,1]
@@ -202,31 +251,20 @@ seq$PhosphoPlusIDs <- as.character(seq$PhosphoPlusIDs)
 for (i in seq_along(l)) {
   seq$PhosphoPlusIDs[seq$phosphoSites == names(l)[i]] <- paste(unique(l[[i]]), collapse = "|")
 }
+```
 
-IsMapped <- unique(seq$phosphoSites[!is.na(seq$PhosphoPlusIDs)])
-NotMapped <- unique(seq$phosphoSites[is.na(seq$PhosphoPlusIDs)])
+```{r, eval = F}
+IsMapped <- unique(seq$phosphoSites[!is.na(seq$PSPNonMouseIDs) | !is.na(seq$PhosphoPlusIDsMouse)])
+NotMapped <- unique(seq$phosphoSites[!(!is.na(seq$PSPNonMouseIDs) | !is.na(seq$PhosphoPlusIDsMouse))])
 ```
 
 I map back PhosphositePlus IDs and informations to annotated tables.
 
 ```{r, eval = F}
-vec <- paste0(tabK$ACC_ID, "_", gsub("-p", "", tabK$MOD_RSD, fixed = T))
-vec[vec == "NA_NA"] <- paste0(tabK$SUB_ACC_ID[vec == "NA_NA"], "_", tabK$SUB_MOD_RSD[vec == "NA_NA"])
-tabKM <- tabK[tabK$ORGANISM == "mouse",]
-vecM <- vec[tabK$ORGANISM == "mouse"]
-  
 for (i in seq_along(psiteInfo)) {
   li <- psiteInfo[[i]]
-  if (is.null(tabKM$ALL_SITEGPID[match(li$MonoSites, vecM)])) {
-    li$PhosphoSitePlusMouse <- NA
-  } else {
-    li$PhosphoSitePlusMouse <- tabKM$ALL_SITEGPID[match(li$MonoSites, vecM)]
-  }
-  if (is.null(seq$PhosphoPlusIDs[match(li$MonoSites, seq$phosphoSites)])) {
-    li$PhosphoSitePlusAll <- NA
-  } else {
-    li$PhosphoSitePlusAll <- seq$PhosphoPlusIDs[match(li$MonoSites, seq$phosphoSites)]
-  }
+  li$PhosphoSitePlusMouse <- seq$PhosphoPlusIDsMouse[match(li$MonoSites, seq$phosphoSites)][!is.na(seq$PhosphoPlusIDsMouse[match(li$MonoSites, seq$phosphoSites)])]
+  li$PhosphoSitePlusNotMouse <- seq$PSPNonMouseIDs[match(li$MonoSites, seq$phosphoSites)][!is.na(seq$PSPNonMouseIDs[match(li$MonoSites, seq$phosphoSites)])]
   psiteInfo[[i]] <- li
 }
   
@@ -241,11 +279,12 @@ load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
 for (i in seq_along(lf)) {
   tab <- lf[[i]]
   tab$PSPAllSPecies <- sapply(tab$phosphoSites, function(x) {
-    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusAll
+    paste(psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusNotMouse, collapse = "|")
   })
   tab$PSPMouse <- sapply(tab$phosphoSites, function(x) {
-    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusMouse
+    paste(as.character(psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusMouse), collapse = "|")
   })
+  tab$PSPAllSPecies[is.na(tab$PSPAllSPecies) | tab$PSPAllSPecies == ""] <- tab$PSPMouse[is.na(tab$PSPAllSPecies) | tab$PSPAllSPecies == ""]
   lf[[i]] <- tab
 }
   
@@ -257,9 +296,8 @@ load(file = "RData/04_ParsedTablesPSP.RData")
 ```
 
 ```{r}
-vec <- sapply(psiteInfo, function(x) {x$PhosphoSitePlusAll})
-notmapped <- names(vec)[is.na(vec)]
-mapped <- names(vec)[!is.na(vec)]
+notmapped <- unique(unlist(sapply(lf, function(x) {x$phosphoSites[x$PSPAllSPecies == ""]})))
+mapped <- unique(unlist(sapply(lf, function(x) {x$phosphoSites[x$PSPAllSPecies != ""]})))
 
 vec <- sapply(psiteInfo[names(psiteInfo) %in% notmapped], function(x) {x$GeneID})
 vec <- as.character(vec)
