@@ -416,14 +416,22 @@ for (i in 1:length(lf)) {
 }
 ``` 
 
-The multiply-phosphorylated sites do not get a score.
+The multiply-phosphorylated sites do not get a score. For sites identified multiple times, I keep the highest localisation score for the pie chart.
 
 ```{r}
-Classes <- sapply(lf, function(x) table(x$LocalisationClass))
-gtab <- melt(Classes)
-gtab$Sample <- sapply(gtab$L1, function(x) {
-  strsplit(x, "_", fixed = T)[[1]][1]
-})
+lclasses <- unlist(sapply(lf, function(x) x$LocalisationClass))
+lpsites <- unlist(sapply(lf, function(x) x$phosphoSites))
+tabClasses <- cbind(lpsites, lclasses)
+tabClasses <- tabClasses[order(tabClasses[,2]),]
+tabCpY <- tabClasses[grepl("pYIP", row.names(tabClasses)),]
+tabCpY <- tabCpY[!duplicated(tabCpY[,1]),]
+tabCTiO2 <- tabClasses[grepl("TiO2", row.names(tabClasses)),]
+tabCTiO2 <- tabCTiO2[!duplicated(tabCTiO2[,1]),]
+
+ClassespY <- table(tabCpY[,2])
+ClassesTiO2 <- table(tabCTiO2[,2])
+gtab <- rbind(melt(ClassesTiO2), melt(ClassespY))
+gtab$Sample <- rep(c("TiO2", "pYIP"), each = 4)
 gtab <- gtab[order(gtab$Var1),]
 
 g <- ggplot(gtab, aes(x = "", y = value, fill = Var1))+ geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + xlab("Biological replicate") + ylab("Proportion") + ggtitle("Class of the identified phosphorylation sites") + scale_fill_manual(values = mlpcolours[c(1:4)]) + theme_minimal() + facet_wrap(~Sample)  
@@ -444,7 +452,18 @@ for (i in 1:length(lf)) {
         tab1 <- tab1[tab1$LocalisationClass == "Class 1" | tab1$LocalisationClass == "Class 2" | grepl("+", tab1$phosphoSites, fixed = T),]
         lf[[i]] <- tab1
 }
+n <- length(
+  unique(
+    unlist(
+      sapply(lf, function(x) {
+        x$phosphoSites
+      })
+    )
+  )
+)
 ```
+
+After this filter, there are `r n` unique phosphosites.
 
 Number of phosphorylated amino-acids identified in the study.
 
@@ -584,9 +603,8 @@ print(laatables)
 
 # Not referenced in PhosphoSitePlus:
 laa <- lapply(lf, function(x) {
-  x$phosphoSites[is.na(x$PSPMouse) & !(grepl(";", x$psiteGeneID))]
+  x$phosphoSites[x$PSPMouse == ""]
 })
- # There are no multiple phosphorylations
 
 laaID <- lapply(laa, function(x) {
   unique(unlist(x))
@@ -602,6 +620,9 @@ laa <- lapply(laaID, function(x) {
 laa <- sapply(laa, function(x) {
   gsub(";", "", x, fixed = T)
 })
+laa <- sapply(laa, function(x) {
+  unlist(strsplit(x, "+", fixed = T))
+})
 aa <- sapply(laa, table)
 name <- sapply(laa, function(x) names(table(x)))
 
@@ -611,7 +632,7 @@ aa <- rbind(aa, "total" = colSums(aa))
 ## pYIP:
 aatot <- unique(c(laaID[[1]], laaID[[2]]))
 vec <- sapply(aatot, function(x) {
-  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites[is.na(psiteInfo[names(psiteInfo) == x][[1]]$PhosphoSitePlusMouse)]
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
 })
 vec <- unlist(vec)
 vec <- unique(vec)
@@ -620,12 +641,15 @@ vec <- sapply(vec, function(x) {
 })
 vec <- sapply(vec, function(x) {
   gsub(";", "", x, fixed = T)
+})
+vec <- sapply(vec, function(x) {
+  unlist(strsplit(x, "+", fixed = T))
 })
 aa2 <- cbind("pYIP_R1" = aa[1:3,1], "pYIP_R4"=table(vec))
 
 aatot <- unique(c(laaID[[1]], laaID[[2]], laaID[[3]]))
 vec <- sapply(aatot, function(x) {
-  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites[is.na(psiteInfo[names(psiteInfo) == x][[1]]$PhosphoSitePlusMouse)]
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
 })
 vec <- unlist(vec)
 vec <- unique(vec)
@@ -634,13 +658,16 @@ vec <- sapply(vec, function(x) {
 })
 vec <- sapply(vec, function(x) {
   gsub(";", "", x, fixed = T)
+})
+vec <- sapply(vec, function(x) {
+  unlist(strsplit(x, "+", fixed = T))
 })
 aa2 <- cbind(aa2, "pYIP_R5"=table(vec))
 
 ## TiO2:
 aatot <- unique(c(laaID[[4]], laaID[[5]]))
 vec <- sapply(aatot, function(x) {
-  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites[is.na(psiteInfo[names(psiteInfo) == x][[1]]$PhosphoSitePlusMouse)]
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
 })
 vec <- unlist(vec)
 vec <- unique(vec)
@@ -649,12 +676,15 @@ vec <- sapply(vec, function(x) {
 })
 vec <- sapply(vec, function(x) {
   gsub(";", "", x, fixed = T)
+})
+vec <- sapply(vec, function(x) {
+  unlist(strsplit(x, "+", fixed = T))
 })
 aa1 <- cbind("TiO2_R1" = aa[1:3,4], "TiO2_R3"=table(vec))
 
 aatot <- unique(c(laaID[[4]], laaID[[5]], laaID[[6]]))
 vec <- sapply(aatot, function(x) {
-  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites[is.na(psiteInfo[names(psiteInfo) == x][[1]]$PhosphoSitePlusMouse)]
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
 })
 vec <- unlist(vec)
 vec <- unique(vec)
@@ -663,12 +693,15 @@ vec <- sapply(vec, function(x) {
 })
 vec <- sapply(vec, function(x) {
   gsub(";", "", x, fixed = T)
+})
+vec <- sapply(vec, function(x) {
+  unlist(strsplit(x, "+", fixed = T))
 })
 aa1 <- cbind(aa1, "TiO2_R4"=table(vec))
 
 aatot <- unique(c(laaID[[4]], laaID[[5]], laaID[[6]], laaID[[7]]))
 vec <- sapply(aatot, function(x) {
-  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites[is.na(psiteInfo[names(psiteInfo) == x][[1]]$PhosphoSitePlusMouse)]
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
 })
 vec <- unlist(vec)
 vec <- unique(vec)
@@ -677,6 +710,9 @@ vec <- sapply(vec, function(x) {
 })
 vec <- sapply(vec, function(x) {
   gsub(";", "", x, fixed = T)
+})
+vec <- sapply(vec, function(x) {
+  unlist(strsplit(x, "+", fixed = T))
 })
 aa1 <- cbind(aa1, "TiO2_R5"=table(vec))
 
@@ -687,7 +723,7 @@ print(laatablesNotRef)
 
 aatot <- unique(c(laaID[[7]], laaID[[1]], laaID[[2]], laaID[[3]], laaID[[4]], laaID[[5]], laaID[[6]]))
 vec <- sapply(aatot, function(x) {
-  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites[is.na(psiteInfo[names(psiteInfo) == x][[1]]$PhosphoSitePlusMouse)]
+  psiteInfo[names(psiteInfo) == x][[1]]$MonoSites
 })
 vec <- unlist(vec)
 vec <- unique(vec)
@@ -696,6 +732,9 @@ vec <- sapply(vec, function(x) {
 })
 vec <- sapply(vec, function(x) {
   gsub(";", "", x, fixed = T)
+})
+vec <- sapply(vec, function(x) {
+  unlist(strsplit(x, "+", fixed = T))
 })
 
 numtotSnotref <- length(vec[vec=="S"])
