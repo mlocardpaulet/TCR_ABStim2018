@@ -358,9 +358,13 @@ par(mar = c(1, 1, 4, 1))
 npprot <- sapply(lf, function(x) length(unique(x$Accession)))
 npsites <- sapply(lf, function(x) length(unique(x$phosphoSite)))
 lvenn <- lapply(lf, function(x) unique(x$phosphoSite))
+print("Number of unique site in the analysis:")
+print(length(unique(unlist(lvenn))))
 # Draw venn diagrams:
 ## pYIP:
 l <- lvenn[grepl("pYIP", names(lvenn))]
+print("Number of unique site in the pYIP:")
+print(length(unique(unlist(l))))
 vec <-  sapply(l, length)
 intAB <- length(intersect(l[[1]], l[[2]]))
 intBC <- length(intersect(l[[3]], l[[2]]))
@@ -374,6 +378,8 @@ venn(l)
 
 ## TiO2:
 l <- lvenn[grepl("TiO2", names(lvenn))]
+print("Number of unique site in the TiO2:")
+print(length(unique(unlist(l))))
 vec <-  sapply(l, length)
 intAB <- length(intersect(l[[1]], l[[2]]))
 intBC <- length(intersect(l[[3]], l[[2]]))
