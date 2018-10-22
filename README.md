@@ -42,6 +42,8 @@ Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 
 `"Phomics"` contains the results of GO term enrichments based on the phosphorylation sites using [Phomics](http://phomics.jensenlab.org/phospho_enrichment_uniprot) the 4th September 2018. I used the detected sites as background.
 
+`"tsne"` contains the scripts for tsne prodution and clustering (work of Romain Roncagalli).
+
 ## Data analysis:
 
 The data was prepared and normalised with the scripts in "DataPreparation.Rmd/html" with some quality control. See "DataPreparation_Proteome.Rmd/html" for the quality control of the proteins data.
