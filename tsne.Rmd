@@ -1,0 +1,114 @@
+---
+title: "TMT analysis of OT-1 T-cells upon TCR stimulation"
+author: "Marie Locard-Paulet"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+
+```{r Packages, echo=FALSE, message=FALSE, warning=FALSE}
+library(gplots)
+library(knitr)
+library(reshape2)
+library(ggplot2)
+library(dbscan)
+library(missMDA)
+
+knitr::opts_chunk$set(echo = FALSE)
+
+colfuncClusters <- colorRampPalette(c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue"))
+colourClus <- colfuncClusters(13)
+```
+
+
+```{r}
+load(file = "RData/11_TableClusters.RData")
+tab <- export
+load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
+tsne <- read.table("tsne/table_all_phospho_loca_tSNENew2018_NewClusters.csv", sep = ";", header = T)
+```
+
+I use as input the fold changes upon TCR activation.
+
+# tsne plots
+
+```{r}
+ggplot(tsne, aes(x = V1, y = V2, col = factor(NewClusters))) + geom_point(alpha = 0.6, size = 3) + scale_color_manual(values = colourClus) + theme_bw() + labs(title = "tsne of the regulated sites") 
+```
+================================================================================
+
+# Functional analysis
+
+I find from PhosphoSitePlus the putative kinases responsible for the phosphorylation sites regulations.
+
+```{r}
+load(file = "RData/DBMapping/PsitePlus.RData")
+tempM <- sapply(export$psiteID, function(x) {
+    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusMouse[1]
+  })
+tempA <- sapply(export$psiteID, function(x) {
+    psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusNotMouse[1]
+  })
+tempM[is.na(tempM)] <- tempA[is.na(tempM)]
+export$PsitePlusIDMultiSpecies <- tempM
+tabK <- ltabK$KinaseSubstrate
+names(tabK)[names(tabK) == "SITE_GRP_ID"] <- "PsitePlusIDMultiSpecies"
+tabK <- tabK[tabK$KIN_ORGANISM %in% c("human", "mouse", "rat"),]
+tabK <- tabK[order(tabK$KIN_ORGANISM),]
+mer <- merge(export, tabK, by = "PsitePlusIDMultiSpecies", all = T)
+mer <- mer[!is.na(mer$psiteID),]
+
+temp <- sapply(tsne$kineticMean.psiteID, function(x) {
+  paste(unique(mer$KINASE[as.character(mer$GeneID) == x]), collapse = "|")
+})
+tsne$Kinase <- temp
+```
+
+I plot the PCAs with the names of all the kinases that are found regulating the sites:
+
+```{r}
+kinases <- unique(
+  unlist(
+    sapply(tsne$kineticMean.psiteID, function(x) {
+      unique(mer$KINASE[as.character(mer$GeneID) == x])
+    })
+  )
+)
+kinases <- sort(kinases)
+tsne$Kinase <- as.character(tsne$Kinase)
+
+pdf("Figures/tsneKinases.pdf", useDingbats=FALSE, 9, 8)
+for (el in kinases) {
+  tsne$labels <- as.character(tsne$kineticMean.psiteID)
+  tsne$labels[!grepl(el, tsne$Kinase)] <- ""
+  g <- ggplot(tsne, aes(x = V1, y = V2, col = factor(NewClusters), label = labels)) + geom_point(alpha = 0.3, size = 3) + scale_color_manual(values = colourClus) + theme_bw() + labs(title = "tsne of the regulated sites", subtitle = el)  + geom_text(size = 4, fontface = "bold")
+  print(g)
+}
+dev.off()
+```
+
+I plot the plots of the tsne with the kinase substrates in the document "Figures/tsneKinases.pdf".
+
+```{r, eval = F}
+temp <- tsne[,c(3,7)]
+temp <- temp[temp$Kinase != "NA",]
+temp <- temp[!duplicated(temp),]
+write.table(temp, "SupTables/PhosphoSitePlusMapping.txt", sep = "\t", row.names = F, quote = F)
+```
+
+```{r}
+pdf("Figures/tsne.pdf", useDingbats=FALSE, 9, 8)
+g <- ggplot(tsne, aes(x = V1, y = V2, col = factor(NewClusters))) + 
+  geom_point(alpha = 0.6, size = 3) + 
+  scale_color_manual(values = colourClus) + 
+  theme_bw() + 
+  labs(title = "tsne of the regulated sites")  
+print(g)
+dev.off()
+```
+
+================================================================================
+
+```{r SessionInfo, echo=FALSE}
+sessionInfo()
+``` 

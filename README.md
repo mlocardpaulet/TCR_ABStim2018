@@ -1,6 +1,8 @@
 # TCR_ABStim2018
 Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 
+Reference: *To update* 
+
 ## Folder organisation:
 
 `"RAW"` contains all the search results from MaxQuant:
@@ -20,17 +22,17 @@ Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 - "DBMapping": data used for the mapping of our phosphorylation sites to the PhosphoSitePlus data base (see the file "PhosphoDBMapping.Rmd" to get the details).
 - "01_ParsedTables.RData": Phospho(STY) tables from MaxQuant after parsing through the function "MultiPhosphoParsingMQ" to get the ID of the multi-phosphorylated peptides.
 - "02_psitesInfo.RData": list of all the phosphosites of the analysis with their different IDs.
-- "03_psiteInfoPhosphoSitePlus.RData": list of all the IDs of the phosphosites of the data set, with the phosphositePlus references (Mouse and all organisms if no mouse found)(see the file "PhosphoDBMapping.Rmd" to get the details). 
+- "03_psiteInfoPhosphoSitePlus.RData": list of all the IDs of the phosphosites of the data set, with the phosphositePlus references (Mouse and all organisms if no mouse found) (see the file "PhosphoDBMapping.Rmd" to get the details). 
 - "04_ParsedTablesPSP.RData": Quantification data with the PhosphoSitePlus ID.
-- "05_ParsedTablesNormPSP.RData": Data normalised for technical instrument variation using the intensities of the iRT. Also, I removed some runs that overperformed. 
+- "05_ParsedTablesNormPSP.RData": Data normalised for technical instrument variation using the intensities of the iRT. Also, I removed some runs that underperformed (see the markdown/html documents "DataPreparation"). 
 - "06_Prottab.RData": Protein data (raw).
 - "07_TableBeforeStat.RData": The normalised and QC data of the phosphoproteome before statistical analysis.
 - "08_StatResultsPhospho.RData": The output of the statistical analysis of the phosphoproteome.
 - "09_Correlations.RData": The output of the correlation analysis of the significantly regulated sites.
-- "10_Cluster.RData": The clusters of phospho-kinetics (only include the significantly regulated sites).
+- "10_Cluster.RData": The clusters of phospho-kinetics (only include the significantly regulated sites), with the coordinates of the tsne.
 - "11_TableClusters.RData": Phosphoproteomic data with the results of the statistical analysis and the clustering.
-- "12_PhosphoTableWithProteinWaring.RData": Phosphoproteomic data with the results of the statistical analysis and the clustering. I added a final column that indicates if the protein FC correlates with the phosphorylation sites FC on this protein.
-- "13_PhosphoscoutMapping.RData": Mapping of the phospho-regulated sites to the PhosphoScout database.
+*- "12_PhosphoTableWithProteinWaring.RData": Phosphoproteomic data with the results of the statistical analysis and the clustering. I added a final column that indicates if the protein FC correlates with the phosphorylation sites FC on this protein.*
+*- "13_PhosphoscoutMapping.RData": Mapping of the phospho-regulated sites to the PhosphoScout database.*
 
 `"KEAEnrichments"` contains the results of phosphorylation site specific enrichment using [KEA](http://www.maayanlab.net/KEA2/#) the 4th September 2018 (no background). I saved the enrichment results with the following labels:
 - "KS" for Literature Based Kinase-Substrate Library with Phosphosites, followed by the cluster number.
@@ -50,7 +52,7 @@ The data was prepared and normalised with the scripts in "DataPreparation.Rmd/ht
 
 The scripts used for the statistical testing of the data (including kinetics normalisation and replacement of missing values) are in the folder `StatisticalAnalysis`. IT CONTAINS THE MANUAL CORRECTION OF SEVERAL NAMING ISSUES IN THE ORIGINAL TABLES. The same folder contains the script used for the statistical analysis of the proteome.
 
-The clustering of the phosphorylation sites is performed in the document `PhoshositesClustering`. I chose to perform tight clustering on the mean values of the loops. I scaled the kinetics (row-wise).
+The clustering of the phosphorylation sites is performed with the scripts in the folder `tsne`. It was performed usign ClusterX on the coordinates of a tsne of the regulated sites (mean values of the biological repeats after 200 loops). The kinetics were scaled (row-wise).
 
 I made a PCA plot of the regulated phosphorylation sites in the `PCA` document.
 

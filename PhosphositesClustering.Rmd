@@ -19,10 +19,10 @@ library("viridis")
 
 library(Rmisc) # multiplot()
 
-colfuncClusters <- colorRampPalette(c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue", "black"))
+colfuncClusters <- colorRampPalette(c("#9E0142", "#D53E4F", "#F46D43", "#FDAE61", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2", "darkblue"))
 # colfunclight <- colorRampPalette(c("black", "darkred", "red","yellow"))
 
-colfunclight <- colorRampPalette(c("red", "black", "green"))
+colfunclight <- colorRampPalette(c("green", "black", "red"))
 ```
 
 # Generation of the input data
@@ -306,11 +306,59 @@ dev.off()
 
 # Clustering 
 
-Using tight clustering, I test several number of clusters:
+The scripts used for the clustering are in the folder `tsne` and were written by Romain Roncagalli. He used ClusterX to cluster the regulated phosphorylation sites based on their coordinate on a tsne representation.
 
 ```{r}
 regulatedhits <- unique(as.character(export$psiteID[export$Regulation=="TRUE"]))
 regulatedhits <- regulatedhits[!is.na(regulatedhits)]
+```
+
+
+```{r}
+clusres <- read.table("tsne/table_all_phospho_loca_tSNENew2018.csv", sep = ";", header = T, stringsAsFactors = F, dec = ",")
+clusres <- clusres[,-1]
+
+# Add some missing gene IDs based on the table "NA Uncharacterized Phospho prot" in the "tsne" folder:
+export$GeneID[grepl("Q3TYS2", export$psiteID)] <- gsub("NA_", "Cybc1_", export$GeneID[grepl("Q3TYS2", export$psiteID)], fixed = T)
+export$GeneID[grepl("A2AG58", export$psiteID)]  <- gsub("NA_", "Bclaf3_", export$GeneID[grepl("A2AG58", export$psiteID)], fixed = T)
+export$GeneID[grepl("Q05AH6", export$psiteID)]  <- gsub("NA_", "Spindoc_", export$GeneID[grepl("Q05AH6", export$psiteID)], fixed = T)
+export$GeneID[grepl("Q8BZR9", export$psiteID)]  <- gsub("NA_", "Ncbp3_", export$GeneID[grepl("Q8BZR9", export$psiteID)], fixed = T)
+export$GeneID[grepl("Q9D6W8", export$psiteID)]  <- gsub("NA_", "Borcs6_", export$GeneID[grepl("Q9D6W8", export$psiteID)], fixed = T)
+
+# Reorder the clusters:
+ggplot(data = clusres, aes(x = V1, y = V2, col = factor(kineticMean.cluster), label = kineticMean.cluster)) +
+  geom_text()
+
+reorderclus <- data.frame("new" = 1:13, "old" = c(1,6,9,13,11,5,2,7,12,10,4,8,3))
+
+clusres$NewClusters <- reorderclus$new[match(clusres$kineticMean.cluster, reorderclus$old)]
+
+ggplot(data = clusres, aes(x = V1, y = V2, col = factor(NewClusters), label = NewClusters)) +
+  geom_text()
+
+clusres$kineticMean.psiteID <- gsub("_", ";", clusres$kineticMean.psiteID, fixed = T)
+clusres$kineticMean.psiteID <- gsub("-", "_", clusres$kineticMean.psiteID, fixed = T)
+
+save(clusres, file = "RData/10_Clusters.Rdata")
+write.table(clusres, "tsne/table_all_phospho_loca_tSNENew2018_NewClusters.csv", sep = ";", row.names = F)
+```
+
+```{r}
+load(file = "RData/10_Clusters.Rdata")
+```
+
+Graphical representation of the different clusters with real values:
+*Here I re-ordered the clusters for the paper based on their kinetic shape and not the number of site:* 
+
+`r table(clusres$NewClusters)`
+
+```{r, echo = F}
+export$ClusterMerged <- clusres$NewClusters[match(export$GeneID, clusres$kineticMean.psiteID)]
+df <- export[!is.na(export$ClusterMerged),]
+ref <- sort(unique(export$ClusterMerged[!is.na(export$ClusterMerged)]))
+# ref <- ref[ref!=-1]
+
+# Calculate mean of conditions for plots:
 l <- list()
 for (el in unique(export$SamplePrep)) {
   if (el == "pYIP") {
@@ -339,48 +387,7 @@ for (el in unique(export$SamplePrep)) {
 }
 clusmat <- rbind(l[[1]], l[[2]])
 keepcm <- clusmat
-clusmat <- t(scale(t(clusmat))) # scale the data set.
-clusmat <- clusmat[row.names(clusmat) %in% regulatedhits,]
-```
 
-
-```{r, eval = F}
-set.seed(300)
-for (i in 11) {
-        print(paste0("Number of clusters: ", i))
-        target <- i
-        clusres <- tightClust::tight.clust(clusmat, target = i, k.min = 4, resamp.num = 100, random.seed = 300) # recommanded k.min = target + 5
-        clusmat <- clusres[[1]]
-        gtab <- melt(data.frame(clusmat[,1:6], "psiteID" = row.names(clusmat)), varnames = c("psiteID", "Cluster"))
-        gtab$Cluster <- clusres[[2]][match(gtab$psiteID, row.names(clusmat))]
-        #print(ggplot(gtab, aes(x = variable, y = value, col = Cluster, group = Cluster))+stat_summary(fun.y = mean, geom="line", size = 1.2)+scale_color_distiller(palette = "Spectral") + theme_bw())
-        gtab$variable <- factor(as.character(gtab$variable), levels = as.character(sort(unique(gtab$variable))[c(1, 3, 4, 2, 5, 6)]))
-        print(ggplot(gtab, aes(x = variable, y = value, group = Cluster, fill = Cluster))+ stat_smooth(method = "loess") + theme_bw()+scale_fill_distiller(palette = "Spectral") + ggtitle(i))
-        print(table(clusres$cluster))
-}
-
-save(clusres, file = "RData/10_Clusters.Rdata")
-```
-
-```{r}
-load(file = "RData/10_Clusters.Rdata")
-```
-
-Graphical representation of the different clusters with real values:
-*Here I re-ordered the clusters for the paper based on their kinetic shape and not the number of site:* 
-
-```{r, eval = T}
-mapping <- data.frame("ClusteringOuptut" = sort(unique(clusres$cluster)), "NewOrdering" = c(12,1:11))
-clusres$cluster <- mapping$NewOrdering[match(clusres$cluster, mapping$ClusteringOuptut)]
-```
-
-`r table(clusres$cluster)`
-
-```{r, echo = F}
-export$ClusterMerged <- clusres$cluster[match(export$psiteID, row.names(clusmat))]
-df <- export[!is.na(export$ClusterMerged),]
-ref <- unique(export$ClusterMerged[!is.na(export$ClusterMerged)])
-# ref <- ref[ref!=-1]
 
 keepcm <- keepcm[match(df$psiteID, row.names(keepcm)),]
 
@@ -405,8 +412,8 @@ for (i in 1:length(ref)) {
         endlab <- gtab$psiteID[gtab$time==600]
         minreg <- mean(gtab$value[gtab$time==0], na.rm = T)
         #gtab$col <- ifelse(grepl("-Y", as.character(gtab$psiteID)), "pYIP", "TiO2")
-        g <- ggplot(gtab, aes(x = time, y = value, group = psiteID)) + geom_hline(yintercept = minreg, size = 0.5) + geom_vline(xintercept = 0)  + geom_line(linetype="solid", size = 1, linejoin = "round", alpha = 0.5, col = colour) + ggtitle(ti) + theme_minimal() + ylab("log2 intensity relative to NS") # + annotate("text", x = rep(550, length(endlab)), y = endlabY-0.1, label = endlab)
-        g2 <- ggplot(gtab, aes(x = time, y = value)) + geom_hline(yintercept = minreg, size = 0.5)  + geom_vline(xintercept = 0, size = 1) + ggtitle(ti)  + theme_minimal() + ylab("log2 intensity relative to NS")  + stat_summary(fun.y = mean, geom="line", size = 1.2, colour = colour) + geom_point(colour = colour, alpha = 0.5)# + stat_summary(fun.data = "mean_cl_boot", colour = "black", size = 1) + ylim(ylims) #+ annotate("rect", ymin = -1, ymax = 1, xmin = 0, xmax = 600, alpha = 0.1)
+        g <- ggplot(gtab, aes(x = time, y = value, group = psiteID)) + geom_hline(yintercept = minreg, size = 0.5) + geom_vline(xintercept = 0)  + geom_line(linetype="solid", size = 1, linejoin = "round", alpha = 0.5, col = colour) + ggtitle(ti) + theme_minimal() + ylab("Scaled mean log2 intensity") # + annotate("text", x = rep(550, length(endlab)), y = endlabY-0.1, label = endlab)
+        g2 <- ggplot(gtab, aes(x = time, y = value)) + geom_hline(yintercept = minreg, size = 0.5)  + geom_vline(xintercept = 0, size = 1) + ggtitle(ti)  + theme_minimal() + ylab("Scaled mean log2 intensity")  + stat_summary(fun.y = mean, geom="line", size = 1.2, colour = colour) + geom_point(colour = colour, alpha = 0.5)# + stat_summary(fun.data = "mean_cl_boot", colour = "black", size = 1) + ylim(ylims) #+ annotate("rect", ymin = -1, ymax = 1, xmin = 0, xmax = 600, alpha = 0.1)
            
         print(g)
         na <- paste0("Figures/Mean_Clus", ti, "_Scaled.jpg")
