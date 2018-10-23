@@ -505,8 +505,17 @@ gtab1$Var1 <- factor(gtab1$Var1, levels = as.character(gtab1$Var1))
 gtab1$pos <- labposPie(gtab1$Freq)
 gtab1$facet <- ifelse(gtab1$Var1 %in% c(1, 2, 3, 4), "up", "down")
 gtab1$facet[gtab1$Var1 == 12] <- "Mixed"
-g1 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pY") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
-ggplot(gtab1, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pY") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
+g1 <- ggplot(gtab1, aes(x = 0, y = Freq, fill = Var1)) +  
+  geom_bar(width = 1, stat = "identity", position = "fill") + 
+  coord_polar("y") + ggtitle("Cluster composition of the regulated pY") + 
+  scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab1$Var1))]) + 
+  theme_minimal() + 
+  geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+gb1 <- ggplot(gtab1, aes(x = Var1, y = Freq, fill = Var1)) +  
+  geom_bar(width = 1, stat = "identity", position = "dodge") + 
+  ggtitle("Cluster composition of the regulated pY") + 
+  scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab1$Var1))]) + theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
+print(gb1)
 kable(gtab1)
 gtab2 <- cbind(gtab1, "AminoAcid" = rep("pY", nrow(gtab1)))
 # For serines:
@@ -516,8 +525,18 @@ gtab3$Var1 <- factor(gtab3$Var1, levels = as.character(gtab3$Var1))
 gtab3$pos <- labposPie(gtab3$Freq)
 gtab3$facet <- ifelse(gtab3$Var1 %in% c(1, 2, 3, 4), "up", "down")
 gtab3$facet[gtab3$Var1 == 12] <- "Mixed"
-g2 <- ggplot(gtab3, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pS") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab3$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
-ggplot(gtab3, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pS") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab3$Var1))]) + theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
+g2 <- ggplot(gtab3, aes(x = 0, y = Freq, fill = Var1)) +  
+  geom_bar(width = 1, stat = "identity", position = "fill") + 
+  coord_polar("y") + ggtitle("Cluster composition of the regulated pS") + 
+  scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab3$Var1))]) + 
+  theme_minimal() + 
+  geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+gb2 <- ggplot(gtab3, aes(x = Var1, y = Freq, fill = Var1)) +  
+  geom_bar(width = 1, stat = "identity", position = "dodge") + 
+  ggtitle("Cluster composition of the regulated pS") + 
+  scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab3$Var1))]) + 
+  theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
+print(gb2)
 kable(gtab3) 
 gtab2 <- rbind(gtab2, cbind(gtab3, "AminoAcid" = rep("pS", nrow(gtab3))))
 # For threonines:
@@ -527,8 +546,18 @@ gtab4$Var1 <- factor(gtab4$Var1, levels = as.character(gtab4$Var1))
 gtab4$pos <- labposPie(gtab4$Freq)
 gtab4$facet <- ifelse(gtab4$Var1 %in% c(1, 2, 3, 4), "up", "down")
 gtab4$facet[gtab4$Var1 == 12] <- "Mixed"
-g3 <- ggplot(gtab4, aes(x = 0, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "fill") + coord_polar("y") + ggtitle("Cluster composition of the regulated pT") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab4$Var1))]) + theme_minimal() + geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
-ggplot(gtab4, aes(x = Var1, y = Freq, fill = Var1)) +  geom_bar(width = 1, stat = "identity", position = "dodge") + ggtitle("Cluster composition of the regulated pT") + scale_fill_manual(values = colfuncClusters(12)[as.numeric(as.character(gtab4$Var1))]) + theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
+g3 <- ggplot(gtab4, aes(x = 0, y = Freq, fill = Var1)) +  
+  geom_bar(width = 1, stat = "identity", position = "fill") + 
+  coord_polar("y") + ggtitle("Cluster composition of the regulated pT") + 
+  scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab4$Var1))]) + 
+  theme_minimal() + 
+  geom_text_repel(aes(x = 0.5, y = pos, label = Freq), nudge_x = .3, segment.size = .7, show.legend = FALSE)
+gb3 <- ggplot(gtab4, aes(x = Var1, y = Freq, fill = Var1)) +  
+  geom_bar(width = 1, stat = "identity", position = "dodge") + 
+  ggtitle("Cluster composition of the regulated pT") + 
+  scale_fill_manual(values = colfuncClusters(13)[as.numeric(as.character(gtab4$Var1))]) + 
+  theme_minimal() #+ facet_wrap(.~facet, scales = "free_x")
+print(gb3)
 kable(gtab4)
 gtab2 <- rbind(gtab2, cbind(gtab4, "AminoAcid" = rep("pT", nrow(gtab4))))
 
@@ -548,6 +577,9 @@ print(g1)
 print(g2)
 print(g3)
 print(g4)
+print(gb1)
+print(gb2)
+print(gb3)
 dev.off()
 ```
 
