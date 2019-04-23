@@ -93,3 +93,7 @@ other attached packages:
 [1] missMDA_1.14   dbscan_1.1-3   ggplot2_3.1.0  reshape2_1.4.3
 [5] knitr_1.21     gplots_3.0.1.1
 ```
+
+## "Figures" scripts:
+
+The documents `Figures_HistNumOfPhos.Rmd/html` and `Figures_ProtQuanVsPhosphoDetection.Rmd/html` were used to generate the supplementary figures of the paper. 
