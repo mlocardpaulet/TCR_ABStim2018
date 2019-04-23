@@ -37,12 +37,13 @@ I use as input the fold changes upon TCR activation.
 ggplot(tsne, aes(x = V1, y = V2, col = factor(NewClusters))) + geom_point(alpha = 0.6, size = 3) + scale_color_manual(values = colourClus) + theme_bw() + labs(title = "tsne of the regulated sites") 
 ```
 ================================================================================
+<!--
 
 # Functional analysis
 
 I find from PhosphoSitePlus the putative kinases responsible for the phosphorylation sites regulations.
 
-```{r}
+```{r, eval = F}
 load(file = "RData/DBMapping/PsitePlus.RData")
 tempM <- sapply(export$psiteID, function(x) {
     psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusMouse[1]
@@ -65,9 +66,9 @@ temp <- sapply(tsne$kineticMean.psiteID, function(x) {
 tsne$Kinase <- temp
 ```
 
-I plot the PCAs with the names of all the kinases that are found regulating the sites:
+I plot the tSNE with the names of all the kinases that are found regulating the sites:
 
-```{r}
+```{r, eval = F}
 kinases <- unique(
   unlist(
     sapply(tsne$kineticMean.psiteID, function(x) {
@@ -96,6 +97,8 @@ temp <- temp[temp$Kinase != "NA",]
 temp <- temp[!duplicated(temp),]
 write.table(temp, "SupTables/PhosphoSitePlusMapping.txt", sep = "\t", row.names = F, quote = F)
 ```
+!-->
+
 
 ```{r}
 pdf("Figures/tsne.pdf", useDingbats=FALSE, 9, 8)
@@ -112,7 +115,6 @@ Localise some sites of interest:
 the CD3 chains are the black circles.
 
 ```{r}
-
 tsne$labels <- tsne$kineticMean.psiteID
 tsne$labels[!(grepl("Cd3", tsne$labels) | grepl("Cd247", tsne$labels) | grepl("Itsn2", tsne$labels))] <- NA
 tsne$TCR <- ifelse(!is.na(tsne$labels) & (grepl("Cd3", tsne$labels) | grepl("Cd247", tsne$labels)), "Cd3 chains", NA )

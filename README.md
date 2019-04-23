@@ -61,7 +61,7 @@ The data was prepared and normalised with the scripts in `01_DataPreparation.Rmd
 
 The scripts used for the statistical testing of the data (including kinetics normalisation and replacement of missing values) are in the folder `StatisticalAnalysis`. **IT CONTAINS THE MANUAL CORRECTION OF SEVERAL NAMING ISSUES IN THE ORIGINAL TABLES**. The same folder contains the script used for the statistical analysis of the proteome.
 
-The clustering of the phosphorylation sites is performed with the scripts in the folder `tsne`. It was performed usign ClusterX on the coordinates of a tsne of the regulated sites (mean values of the biological repeats after 200 loops). The kinetics were scaled (row-wise).
+The clustering of the phosphorylation sites is performed with the scripts in the folder `tsne`. It was performed usign ClusterX on the coordinates of a tsne of the regulated sites (mean values of the biological repeats after 200 loops). The kinetics were scaled (row-wise). The corresponding report files are `03_PhosphositesClustering.Rmd/html` and `04_tsne.Rmd/html` for the clustering and tSNE figure for the paper, respectively.
 
 I made a PCA plot of the regulated phosphorylation sites in the `PCA` document.
 
@@ -69,9 +69,9 @@ I made a PCA plot of the regulated phosphorylation sites in the `PCA` document.
 I performed a pairwise correlation analysis on the regulated phosphorylation sites. This is in the folder `CorrelationAnalysis`.
 !-->
 
-## "Bonus"" scripts:
+## "Bonus" scripts:
 
-It is possible to use the document `Bonus_` to generate the plots of all multiply phosphorylated sites. I used this to control if these did not lead to biased quantifications. *To run this script, you need to create the following path (empty): `Figures/Kinetics/`, and install the appropriate packages (see below).* It will generate the plots of all the multiply-phosphorylated peptides (and corresponding singly-phosphorylated peptides) in the empty path (one .pdf per protein).
+It is possible to use the document `Bonus_MultiplePhosphorylations.Rmd/html` to generate the plots of all multiply phosphorylated sites. I used this to control if these did not lead to biased quantifications. *To run this script, you need to create the following path (empty): `Figures/Kinetics/`, and install the appropriate packages (see below).* It will generate the plots of all the multiply-phosphorylated peptides (and corresponding singly-phosphorylated peptides) in the empty path (one .pdf per protein).
 Session info (packages to load):
 ```
 R version 3.5.2 (2018-12-20)
