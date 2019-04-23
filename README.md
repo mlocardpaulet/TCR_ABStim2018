@@ -35,7 +35,9 @@ Reference: *To update*
 - `"06_Prottab.RData"`: Protein data (raw).
 - `"07_TableBeforeStat.RData"`: The normalised and QC data of the phosphoproteome before statistical analysis.
 - `"08_StatResultsPhospho.RData"`: The output of the statistical analysis of the phosphoproteome.
+<!--
 - `"09_Correlations.RData"`: The output of the correlation analysis of the significantly regulated sites.
+!-->
 - `"10_Cluster.RData"`: The clusters of phospho-kinetics (only include the significantly regulated sites), with the coordinates of the tsne.
 - `"11_TableClusters.RData"`: Phosphoproteomic data with the results of the statistical analysis and the clustering.
 - *`"12_PhosphoTableWithProteinWaring.RData"`: Phosphoproteomic data with the results of the statistical analysis and the clustering. I added a final column that indicates if the protein FC correlates with the phosphorylation sites FC on this protein. THIS IS THE SUPPLEMENTARY TABLE OF THE PAPER.*
@@ -63,7 +65,9 @@ The scripts used for the statistical testing of the data (including kinetics nor
 
 The clustering of the phosphorylation sites is performed with the scripts in the folder `tsne`. It was performed usign ClusterX on the coordinates of a tsne of the regulated sites (mean values of the biological repeats after 200 loops). The kinetics were scaled (row-wise). The corresponding report files are `03_PhosphositesClustering.Rmd/html` and `04_tsne.Rmd/html` for the clustering and tSNE figure for the paper, respectively.
 
-I made a PCA plot of the regulated phosphorylation sites in the `PCA` document.
+I mapped the phosphorylation sites of the data set to the PhosphoSitePlus data base using the script `05_PhosphoDBMapping.Rmd/html`.
+
+The results of the statistical analysis of the proteome data are presented in `06_ProteomeAnalysis.Rmd/html`.
 
 <!--
 I performed a pairwise correlation analysis on the regulated phosphorylation sites. This is in the folder `CorrelationAnalysis`.
@@ -93,6 +97,7 @@ other attached packages:
 [1] missMDA_1.14   dbscan_1.1-3   ggplot2_3.1.0  reshape2_1.4.3
 [5] knitr_1.21     gplots_3.0.1.1
 ```
+The scripts in the folder `Bonus_CorrelationAnalysis` allow the pairwise correlation of all the kinetics. This was not used in the final version of the paper.
 
 ## "Figures" scripts:
 
