@@ -57,7 +57,7 @@ Reference: *To update*
 
 ## Data analysis:
 
-The data was prepared and normalised with the scripts in "DataPreparation.Rmd/html" with some quality control. See `DataPreparation_Proteome.Rmd/html` for the quality control of the proteins data.
+The data was prepared and normalised with the scripts in `01_DataPreparation.Rmd/html` with some quality control. See `02_DataPreparation_Proteome.Rmd/html` for the quality control of the proteins data.
 
 The scripts used for the statistical testing of the data (including kinetics normalisation and replacement of missing values) are in the folder `StatisticalAnalysis`. **IT CONTAINS THE MANUAL CORRECTION OF SEVERAL NAMING ISSUES IN THE ORIGINAL TABLES**. The same folder contains the script used for the statistical analysis of the proteome.
 
@@ -68,3 +68,17 @@ I made a PCA plot of the regulated phosphorylation sites in the `PCA` document.
 <!--
 I performed a pairwise correlation analysis on the regulated phosphorylation sites. This is in the folder `CorrelationAnalysis`.
 !-->
+
+## "Bonus"" scripts:
+
+It is possible to use the document `Bonus_` to generate the plots of all multiply phosphorylated sites. I used this to control if these did not lead to biased quantifications. *To run this script, you need to create the following path (empty): `Figures/Kinetics/`, and install the appropriate packages (see below).* It will generate the plots of all the multiply-phosphorylated peptides (and corresponding singly-phosphorylated peptides) in the empty path (one .pdf per protein).
+Session info (packages to load):
+```
+R version 3.5.2 (2018-12-20)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS Mojave 10.14.4
+
+other attached packages:
+[1] missMDA_1.14   dbscan_1.1-3   ggplot2_3.1.0  reshape2_1.4.3 knitr_1.21     gplots_3.0.1.1
+```
+
