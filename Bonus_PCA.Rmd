@@ -30,7 +30,7 @@ load(file = "RData/03_psiteInfoPhosphoSitePlus.RData")
 
 I use as input the fold changes upon TCR activation.
 
-# PCA plots
+# PCA plot
 
 ```{r}
 mat <- tab[,grepl(".FC", names(tab), fixed = T)]
@@ -58,13 +58,15 @@ gtab$labels <- gtab$GeneID
 gtab$labels[!grepl("Cd", gtab$labels)] <- ""
 ggplot(gtab, aes(x = x, y = y, col = factor(Cluster), label = labels)) + geom_point(alpha = 0.6, size = 3) + scale_color_manual(values = colourClus) + theme_bw() + labs(title = "PCA of the regulated sites") # + geom_text(size = 4)
 ```
+
+<!--
 ================================================================================
 
 # Functional analysis
 
 I find from PhosphoSitePlus the putative kinases responsible for the phosphorylation sites regulations.
 
-```{r}
+```{r, eval = F}
 load(file = "RData/DBMapping/PsitePlus.RData")
 tempM <- sapply(export$psiteID, function(x) {
     psiteInfo[[which(names(psiteInfo) == x)]]$PhosphoSitePlusMouse[1]
@@ -89,7 +91,7 @@ gtab$Kinase <- temp
 
 I plot the PCAs with tthe names of all the kinases that are found regulating the sites:
 
-```{r}
+```{r, eval = F}
 kinases <- unique(
   unlist(
     sapply(gtab$ID, function(x) {
@@ -111,12 +113,14 @@ dev.off()
 
 I plot the plots of the PCA with the kinase substrates in the document "Figures/PCAKinases.pdf".
 
-```{r}
+```{r, eval = F}
 temp <- gtab[,c(3,7)]
 temp <- temp[temp$Kinase != "NA",]
 temp <- temp[!duplicated(temp),]
 write.table(temp, "SupTables/PhosphoSitePlusMapping.txt", sep = "\t", row.names = F, quote = F)
 ```
+
+!-->
 
 ================================================================================
 

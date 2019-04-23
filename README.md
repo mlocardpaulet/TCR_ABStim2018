@@ -82,3 +82,14 @@ other attached packages:
 [1] missMDA_1.14   dbscan_1.1-3   ggplot2_3.1.0  reshape2_1.4.3 knitr_1.21     gplots_3.0.1.1
 ```
 
+It is also possible to generate a PCA with the document `Bonus_PCA.Rmd/html`. 
+Session info (packages to load):
+```
+R version 3.5.2 (2018-12-20)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS Mojave 10.14.4
+
+other attached packages:
+[1] missMDA_1.14   dbscan_1.1-3   ggplot2_3.1.0  reshape2_1.4.3
+[5] knitr_1.21     gplots_3.0.1.1
+```
