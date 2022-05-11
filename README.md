@@ -2,7 +2,9 @@
 
 Phosphoproteomics analysis of antibody-based stimulation of TCR in CD4+ T cells
 
-Reference: *To update* 
+Reference: https://doi.org/10.15252/msb.20209524
+
+**THERE ARE ISSUES WITH THE FILES IN RAW/. FIND ALL THE REPOSITORY ON zenodo.org WITH THE DOI 10.5281/zenodo.6538812**
 
 ## Folder organisation:
 
